@@ -1,36 +1,196 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Miqrotek Student Learning Portal
 
-## Getting Started
+**Miqrotek Student Learning Portal** is a role-based educational platform built with Next.js. It provides dedicated portals for students, instructors, and admins. Students access courses, submit assessments, and track attendance. Instructors manage courses, grade assignments, and monitor performance. Admins oversee users, payments, and system settings.
 
-First, run the development server:
+## 🚀 Tech Stack
+
+- **Next.js 16** (App Router)
+- **React 19**
+- **TypeScript**
+- **Prisma ORM** with PostgreSQL (Neon)
+- **NextAuth v5** (Authentication)
+- **Tailwind CSS 4**
+- **PWA Support** (Offline capabilities)
+
+## 📋 Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- PostgreSQL database (we recommend [Neon](https://neon.tech))
+
+## 🛠️ Setup Instructions
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/ymikenzy55/MiqroTek_Students_Learning_Portal.git
+cd MiqroTek_Students_Learning_Portal
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Environment Variables
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local` with your credentials:
+
+```env
+DATABASE_URL="your-postgresql-connection-string"
+DATABASE_URL_UNPOOLED="your-postgresql-unpooled-connection-string"
+AUTH_SECRET="your-generated-secret-key"
+```
+
+**Generate AUTH_SECRET:**
+```bash
+openssl rand -base64 32
+```
+
+### 4. Database Setup
+
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Push database schema
+npx prisma db push
+
+# Seed database with sample data
+npm run seed
+```
+
+### 5. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 👥 Default Login Credentials
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+After seeding the database:
 
-## Learn More
+| Role | Email | Password |
+|------|-------|----------|
+| Super Admin | admin@miqrotek.com | password123 |
+| Instructor | instructor@miqrotek.com | password123 |
+| Student | student@miqrotek.com | password123 |
 
-To learn more about Next.js, take a look at the following resources:
+**⚠️ Change these in production!**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🌲 Git Workflow
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+We follow **Git Flow** branching strategy. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
 
-## Deploy on Vercel
+### Quick Start:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# Start from develop branch
+git checkout develop
+git pull origin develop
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Make changes, then commit
+git add .
+git commit -m "feat: your feature description"
+
+# Push and create PR
+git push -u origin feature/your-feature-name
+```
+
+**Important:** Never push directly to `main` or `develop`. Always create a Pull Request.
+
+## 📁 Project Structure
+
+```
+src/
+├── app/                 # Next.js App Router pages
+│   ├── admin/          # Admin portal
+│   ├── instructor/     # Instructor portal
+│   ├── student/        # Student portal
+│   ├── api/            # API routes
+│   └── login/          # Authentication
+├── components/         # React components
+│   ├── auth/          # Auth components
+│   ├── layout/        # Layout components
+│   └── ui/            # UI components
+├── lib/               # Utility functions
+├── types/             # TypeScript types
+└── actions/           # Server actions
+
+prisma/
+├── schema.prisma      # Database schema
+└── seed.ts           # Seed data
+```
+
+## 🎯 Available Scripts
+
+```bash
+npm run dev         # Start development server
+npm run build       # Build for production
+npm run start       # Start production server
+npm run lint        # Run ESLint
+npm run seed        # Seed database
+```
+
+## 📚 Features
+
+### For Students:
+- ✅ Course enrollment and access
+- ✅ View course materials and resources
+- ✅ Complete assessments and quizzes
+- ✅ Submit assignments
+- ✅ Track attendance
+- ✅ View grades and feedback
+
+### For Instructors:
+- ✅ Create and manage courses
+- ✅ Upload learning materials
+- ✅ Create assessments
+- ✅ Grade submissions
+- ✅ Track student attendance
+- ✅ Manage course bundles
+- ✅ View student analytics
+
+### For Admins:
+- ✅ User management (students, instructors, admins)
+- ✅ Course administration
+- ✅ Payment tracking
+- ✅ System settings
+- ✅ Comprehensive reporting
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines on:
+
+- Branch naming conventions
+- Commit message format
+- Pull request process
+- Code review guidelines
+- Development best practices
+
+## 📄 License
+
+This project is private and proprietary to Miqrotek.
+
+## 📞 Support
+
+For questions or issues:
+- Create a GitHub issue
+- Contact the development team
+- Check existing documentation
+
+---
+
+Built with ❤️ by the Miqrotek Team
