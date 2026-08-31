@@ -1,0 +1,322 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  SUPER_ADMIN
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String
+  phone           String?
+  passwordHash    String
+  role            Role     @default(STUDENT)
+  image           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  studentProfile   StudentProfile?
+  instructorProfile InstructorProfile?
+
+  // Course management (instructor)
+  courses          Course[]
+
+  // Student enrollments
+  enrollments      Enrollment[]
+
+  // Payments
+  payments         Payment[]
+
+  // Submissions
+  submissions      Submission[]
+
+  // Attendance records
+  attendanceRecords AttendanceRecord[]
+
+  // Attendance sessions (instructor)
+  attendanceSessions AttendanceSession[]
+
+  // Bundle assignments (student)
+  bundleAssignments  BundleAssignment[]
+
+  // Bundles created (instructor)
+  bundles            Bundle[]
+
+  // Password resets
+  passwordResets     PasswordReset[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio       String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("student_profiles")
+}
+
+model InstructorProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String?
+  bio         String?
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("instructor_profiles")
+}
+
+model Course {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  price       Float     @default(0)
+  currency    String    @default("GHS")
+  status      String    @default("ACTIVE")
+  startDate   DateTime?
+  endDate     DateTime?
+  duration    String?
+  instructorId String
+  instructor   User      @relation(fields: [instructorId], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  weeklyTopics  WeeklyTopic[]
+  resources     Resource[]
+  assessments   Assessment[]
+  enrollments   Enrollment[]
+  attendanceSessions AttendanceSession[]
+
+  @@map("courses")
+}
+
+model WeeklyTopic {
+  id          String    @id @default(cuid())
+  courseId     String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  weekNumber  Int
+  title       String
+  description String?
+  objectives  String?
+  date        DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  resources    Resource[]
+  assessments  Assessment[]
+
+  @@map("weekly_topics")
+}
+
+model Resource {
+  id          String   @id @default(cuid())
+  courseId     String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  weeklyTopicId String?
+  weeklyTopic  WeeklyTopic? @relation(fields: [weeklyTopicId], references: [id], onDelete: Cascade)
+  title       String
+  type        String
+  url         String
+  createdAt   DateTime @default(now())
+
+  @@map("resources")
+}
+
+model Assessment {
+  id           String    @id @default(cuid())
+  courseId      String
+  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  weeklyTopicId String?
+  weeklyTopic  WeeklyTopic? @relation(fields: [weeklyTopicId], references: [id], onDelete: Cascade)
+  title        String
+  instructions String?
+  dueDate      DateTime?
+  totalMarks   Float     @default(0)
+  type         String    @default("QUIZ")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  questions    Question[]
+  submissions  Submission[]
+
+  @@map("assessments")
+}
+
+model Question {
+  id           String   @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  text         String
+  type         String
+  options      Json?
+  correctAnswer String?
+  marks        Float    @default(1)
+  createdAt    DateTime @default(now())
+
+  answers      Answer[]
+
+  @@map("questions")
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payment   Payment?
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId        String
+  enrollmentId    String?  @unique
+  enrollment      Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  amount          Float
+  currency        String   @default("GHS")
+  reference       String   @unique
+  status          String   @default("PENDING")
+  paystackRef     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("payments")
+}
+
+model Submission {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  status       String    @default("SUBMITTED")
+  score        Float?
+  feedback     String?
+  komodoUrl    String?
+  submittedAt  DateTime  @default(now())
+  reviewedAt   DateTime?
+
+  answers      Answer[]
+
+  @@map("submissions")
+}
+
+model Answer {
+  id           String   @id @default(cuid())
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  questionId   String
+  question     Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text         String?
+  createdAt    DateTime @default(now())
+
+  @@map("answers")
+}
+
+model AttendanceSession {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  date        DateTime
+  instructorId String
+  instructor  User     @relation(fields: [instructorId], references: [id])
+  createdAt   DateTime @default(now())
+
+  records     AttendanceRecord[]
+
+  @@map("attendance_sessions")
+}
+
+model AttendanceRecord {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String   @default("PRESENT")
+  createdAt   DateTime @default(now())
+
+  @@unique([sessionId, userId])
+  @@map("attendance_records")
+}
+
+model Bundle {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  instructorId String
+  instructor  User      @relation(fields: [instructorId], references: [id])
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  requirements    BundleRequirement[]
+  assignments     BundleAssignment[]
+
+  @@map("bundles")
+}
+
+model BundleRequirement {
+  id          String   @id @default(cuid())
+  bundleId    String
+  bundle      Bundle   @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  isRequired  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@map("bundle_requirements")
+}
+
+model BundleAssignment {
+  id          String   @id @default(cuid())
+  bundleId    String
+  bundle      Bundle   @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String   @default("ASSIGNED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([bundleId, userId])
+  @@map("bundle_assignments")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("password_resets")
+}
