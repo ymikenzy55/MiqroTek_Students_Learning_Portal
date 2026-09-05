@@ -54,6 +54,8 @@ model User {
   // Password resets
   passwordResets     PasswordReset[]
 
+  @@index([role])
+  @@index([email, role])
   @@map("users")
 }
 
@@ -103,6 +105,10 @@ model Course {
   enrollments   Enrollment[]
   attendanceSessions AttendanceSession[]
 
+  @@index([instructorId])
+  @@index([status])
+  @@index([instructorId, status])
+  @@index([createdAt])
   @@map("courses")
 }
 
@@ -155,6 +161,9 @@ model Assessment {
   questions    Question[]
   submissions  Submission[]
 
+  @@index([courseId])
+  @@index([courseId, dueDate])
+  @@index([weeklyTopicId])
   @@map("assessments")
 }
 
@@ -187,6 +196,10 @@ model Enrollment {
   payment   Payment?
 
   @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([userId, status])
+  @@index([courseId, status])
   @@map("enrollments")
 }
 
@@ -262,6 +275,9 @@ model AttendanceRecord {
   createdAt   DateTime @default(now())
 
   @@unique([sessionId, userId])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([sessionId])
   @@map("attendance_records")
 }
 

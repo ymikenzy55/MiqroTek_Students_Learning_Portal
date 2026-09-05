@@ -10,6 +10,7 @@ export default async function AdminCourses() {
       _count: { select: { weeklyTopics: true, enrollments: true } },
     },
     orderBy: { createdAt: "desc" },
+    take: 50, // Limit to 50 courses for performance
   });
 
   return (

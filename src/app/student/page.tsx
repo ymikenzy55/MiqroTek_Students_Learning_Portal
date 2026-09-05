@@ -9,34 +9,51 @@ export default async function StudentDashboard() {
   const session = await auth();
   const userId = session?.user?.id;
 
-  const enrollments = userId
-    ? await prisma.enrollment.findMany({
-        where: { userId },
-        include: {
-          course: {
-            include: {
-              instructor: { select: { name: true } },
-              _count: { select: { weeklyTopics: true, assessments: true } },
-            },
+  if (!userId) {
+    return null;
+  }
+
+  // Optimized: Single parallel fetch instead of sequential queries
+  const [enrollments, stats] = await Promise.all([
+    prisma.enrollment.findMany({
+      where: { userId },
+      include: {
+        course: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            price: true,
+            currency: true,
+            duration: true,
+            instructor: { select: { name: true } },
+            _count: { select: { weeklyTopics: true, assessments: true } },
           },
         },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10, // Limit to recent enrollments for dashboard
+    }),
+    prisma.$transaction([
+      // Pending assessments
+      prisma.assessment.count({
+        where: {
+          course: { enrollments: { some: { userId } } },
+          submissions: { none: { userId } },
+        },
+      }),
+      // Attendance count
+      prisma.attendanceRecord.count({ 
+        where: { userId, status: "PRESENT" } 
+      }),
+      // Bundle count
+      prisma.bundleAssignment.count({ 
+        where: { userId } 
+      }),
+    ]),
+  ]);
 
-  const [pendingAssessments, attendanceCount, bundleCount] = userId
-    ? await Promise.all([
-        prisma.assessment.count({
-          where: {
-            course: { enrollments: { some: { userId } } },
-            submissions: { none: { userId } },
-          },
-        }),
-        prisma.attendanceRecord.count({ where: { userId, status: "PRESENT" } }),
-        prisma.bundleAssignment.count({ where: { userId } }),
-      ])
-    : [0, 0, 0];
-
+  const [pendingAssessments, attendanceCount, bundleCount] = stats;
   const totalTopics = enrollments.reduce((sum, e) => sum + e.course._count.weeklyTopics, 0);
 
   return (

@@ -16,6 +16,7 @@ export default async function StudentCourses() {
         _count: { select: { weeklyTopics: true } },
       },
       orderBy: { createdAt: "desc" },
+      take: 100, // Limit for performance
     }),
     userId
       ? prisma.enrollment.findMany({

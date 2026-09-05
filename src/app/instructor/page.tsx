@@ -9,24 +9,40 @@ export default async function InstructorDashboard() {
   const session = await auth();
   const userId = session?.user?.id;
 
-  const courses = userId
-    ? await prisma.course.findMany({
-        where: { instructorId: userId },
-        include: {
-          instructor: { select: { name: true } },
-          _count: { select: { weeklyTopics: true, enrollments: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
+  if (!userId) {
+    return null;
+  }
 
-  const [studentCount, assessmentCount, sessionCount] = userId
-    ? await Promise.all([
-        prisma.enrollment.count({ where: { course: { instructorId: userId } } }),
-        prisma.assessment.count({ where: { course: { instructorId: userId } } }),
-        prisma.attendanceSession.count({ where: { instructorId: userId } }),
-      ])
-    : [0, 0, 0];
+  // Optimized: Parallel fetch with transaction for counts
+  const [courses, [studentCount, assessmentCount, sessionCount]] = await Promise.all([
+    prisma.course.findMany({
+      where: { instructorId: userId },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        price: true,
+        currency: true,
+        duration: true,
+        createdAt: true,
+        instructor: { select: { name: true } },
+        _count: { select: { weeklyTopics: true, enrollments: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20, // Limit for dashboard view
+    }),
+    prisma.$transaction([
+      prisma.enrollment.count({ 
+        where: { course: { instructorId: userId } } 
+      }),
+      prisma.assessment.count({ 
+        where: { course: { instructorId: userId } } 
+      }),
+      prisma.attendanceSession.count({ 
+        where: { instructorId: userId } 
+      }),
+    ]),
+  ]);
 
   return (
     <div className="space-y-8">
