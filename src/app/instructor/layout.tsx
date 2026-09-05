@@ -11,7 +11,8 @@ export default async function InstructorLayout({ children }: { children: React.R
     redirect("/login");
   }
 
-  if (session.user.role !== "INSTRUCTOR" && session.user.role !== "SUPER_ADMIN") {
+  // Only SUPER_ADMIN can access instructor portal (all instructors are super admins)
+  if (session.user.role !== "SUPER_ADMIN") {
     console.warn(`⚠️ Instructor layout - Invalid role: ${session.user.role}, redirecting to login`);
     redirect("/login");
   }

@@ -31,8 +31,8 @@ export async function requireStudent() {
 }
 
 export async function requireInstructor() {
-  console.log("🔒 Checking INSTRUCTOR access...");
-  return requireRole(["INSTRUCTOR", "SUPER_ADMIN"]);
+  console.log("🔒 Checking SUPER_ADMIN access (Instructor)...");
+  return requireRole(["SUPER_ADMIN"]);
 }
 
 export async function requireSuperAdmin() {

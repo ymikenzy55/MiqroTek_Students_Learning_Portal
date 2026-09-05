@@ -9,7 +9,6 @@ datasource db {
 
 enum Role {
   STUDENT
-  INSTRUCTOR
   SUPER_ADMIN
 }
 

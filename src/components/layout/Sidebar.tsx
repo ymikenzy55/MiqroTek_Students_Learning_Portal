@@ -15,8 +15,7 @@ interface SidebarProps {
 
 const roleLabel: Record<string, string> = {
   STUDENT: "Student",
-  INSTRUCTOR: "Instructor",
-  SUPER_ADMIN: "Administrator",
+  SUPER_ADMIN: "Instructor",
 };
 
 export function Sidebar({ navItems, user }: SidebarProps) {

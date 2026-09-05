@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 
-type Role = "STUDENT" | "INSTRUCTOR" | "SUPER_ADMIN";
+type Role = "STUDENT" | "SUPER_ADMIN";
 
 interface LoginFormProps {
   allowedRoles?: Role[];
@@ -55,7 +55,7 @@ export function LoginForm({ allowedRoles, portalLabel }: LoginFormProps) {
 
     // Enforce the portal the user chose matches their actual role
     if (allowedRoles && (!role || !allowedRoles.includes(role))) {
-      const roleText = role === "STUDENT" ? "student" : role === "INSTRUCTOR" ? "instructor" : role === "SUPER_ADMIN" ? "administrator" : "unknown";
+      const roleText = role === "STUDENT" ? "student" : role === "SUPER_ADMIN" ? "instructor/administrator" : "unknown";
       const msg = `You are signed in as a ${roleText}. Please use the correct sign-in tab for your account type.`;
       
       console.warn(`⚠️ Role mismatch - User role: ${role}, Allowed roles: ${allowedRoles.join(", ")}`);
@@ -73,8 +73,11 @@ export function LoginForm({ allowedRoles, portalLabel }: LoginFormProps) {
     console.log(`✅ Redirecting to dashboard: ${role}`);
 
     if (role === "STUDENT") router.push("/student");
-    else if (role === "INSTRUCTOR") router.push("/instructor");
-    else if (role === "SUPER_ADMIN") router.push("/admin");
+    else if (role === "SUPER_ADMIN") {
+      // Super admins can access both instructor and admin portals
+      // Default to instructor portal
+      router.push("/instructor");
+    }
     else router.push("/login");
   }
 

@@ -166,7 +166,7 @@ export default function LoginPage() {
                 </p>
                 <LoginForm
                   key="staff-login"
-                  allowedRoles={["INSTRUCTOR", "SUPER_ADMIN"]}
+                  allowedRoles={["SUPER_ADMIN"]}
                   portalLabel="instructor or administrator"
                 />
                 <div className="mt-5 flex flex-col gap-2 text-sm">

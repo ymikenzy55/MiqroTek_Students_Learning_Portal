@@ -14,8 +14,7 @@ interface TopbarProps {
 
 const roleLabel: Record<string, string> = {
   STUDENT: "Student",
-  INSTRUCTOR: "Instructor",
-  SUPER_ADMIN: "Administrator",
+  SUPER_ADMIN: "Instructor",
 };
 
 export function Topbar({ user, profileHref }: TopbarProps) {

@@ -32,7 +32,7 @@ async function main() {
     },
   });
 
-  // Instructor
+  // Instructor (now SUPER_ADMIN)
   const instructor = await prisma.user.upsert({
     where: { email: "instructor@miqrotek.com" },
     update: {},
@@ -41,7 +41,7 @@ async function main() {
       email: "instructor@miqrotek.com",
       phone: "+233 000 000 002",
       passwordHash,
-      role: "INSTRUCTOR",
+      role: "SUPER_ADMIN", // All instructors are super admins
       instructorProfile: {
         create: {
           title: "Senior Instructor",
@@ -125,9 +125,10 @@ async function main() {
 
   console.log("Seed data created:");
   console.log(`  Super Admin: ${admin.email} (password: password123)`);
-  console.log(`  Instructor:  ${instructor.email} (password: password123)`);
+  console.log(`  Instructor:  ${instructor.email} (password: password123) [SUPER_ADMIN]`);
   console.log(`  Student:     ${student.email} (password: password123)`);
   console.log(`  Courses:     ${courseData.length} sample courses`);
+  console.log("\n  NOTE: All instructors are super admins with full access!");
   console.log("Done!");
 }
 
