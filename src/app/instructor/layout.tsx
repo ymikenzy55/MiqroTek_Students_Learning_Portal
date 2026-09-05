@@ -7,12 +7,16 @@ export default async function InstructorLayout({ children }: { children: React.R
   const session = await auth();
 
   if (!session?.user) {
+    console.warn("⚠️ Instructor layout - No session found, redirecting to login");
     redirect("/login");
   }
 
   if (session.user.role !== "INSTRUCTOR" && session.user.role !== "SUPER_ADMIN") {
+    console.warn(`⚠️ Instructor layout - Invalid role: ${session.user.role}, redirecting to login`);
     redirect("/login");
   }
+
+  console.log(`✅ Instructor layout - Access granted for: ${session.user.email} (${session.user.role})`);
 
   return (
     <DashboardShell

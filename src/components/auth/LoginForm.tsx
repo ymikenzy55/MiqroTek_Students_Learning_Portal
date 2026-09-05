@@ -29,6 +29,8 @@ export function LoginForm({ allowedRoles, portalLabel }: LoginFormProps) {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
+    console.log(`🔐 Login attempt: ${email} (Portal: ${portalLabel})`);
+
     const result = await signIn("credentials", {
       email,
       password,
@@ -36,6 +38,7 @@ export function LoginForm({ allowedRoles, portalLabel }: LoginFormProps) {
     });
 
     if (result?.error) {
+      console.error("❌ Login failed:", result.error);
       setLoading(false);
       setError("Invalid email or password");
       showToast("Invalid email or password", "error");
@@ -48,9 +51,15 @@ export function LoginForm({ allowedRoles, portalLabel }: LoginFormProps) {
     const role = session?.user?.role as Role | undefined;
     const name = session?.user?.name;
 
+    console.log(`✅ Session retrieved - Role: ${role}, Name: ${name}`);
+
     // Enforce the portal the user chose matches their actual role
     if (allowedRoles && (!role || !allowedRoles.includes(role))) {
-      const msg = `This account is not a ${portalLabel ?? "valid"} account. Please use the correct sign-in tab.`;
+      const roleText = role === "STUDENT" ? "student" : role === "INSTRUCTOR" ? "instructor" : role === "SUPER_ADMIN" ? "administrator" : "unknown";
+      const msg = `You are signed in as a ${roleText}. Please use the correct sign-in tab for your account type.`;
+      
+      console.warn(`⚠️ Role mismatch - User role: ${role}, Allowed roles: ${allowedRoles.join(", ")}`);
+      
       setError(msg);
       showToast(msg, "error");
       await signOut({ redirect: false });
@@ -60,6 +69,8 @@ export function LoginForm({ allowedRoles, portalLabel }: LoginFormProps) {
 
     setLoading(false);
     showToast(`Welcome back${name ? ", " + name : ""}!`, "success");
+
+    console.log(`✅ Redirecting to dashboard: ${role}`);
 
     if (role === "STUDENT") router.push("/student");
     else if (role === "INSTRUCTOR") router.push("/instructor");

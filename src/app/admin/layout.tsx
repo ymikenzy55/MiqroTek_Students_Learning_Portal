@@ -7,12 +7,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const session = await auth();
 
   if (!session?.user) {
+    console.warn("⚠️ Admin layout - No session found, redirecting to login");
     redirect("/login");
   }
 
   if (session.user.role !== "SUPER_ADMIN") {
+    console.warn(`⚠️ Admin layout - Invalid role: ${session.user.role}, redirecting to login`);
     redirect("/login");
   }
+
+  console.log(`✅ Admin layout - Access granted for: ${session.user.email}`);
 
   return (
     <DashboardShell

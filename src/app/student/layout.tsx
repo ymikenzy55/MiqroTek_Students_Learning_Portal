@@ -7,12 +7,16 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const session = await auth();
 
   if (!session?.user) {
+    console.warn("⚠️ Student layout - No session found, redirecting to login");
     redirect("/login");
   }
 
   if (session.user.role !== "STUDENT") {
+    console.warn(`⚠️ Student layout - Invalid role: ${session.user.role}, redirecting to login`);
     redirect("/login");
   }
+
+  console.log(`✅ Student layout - Access granted for: ${session.user.email}`);
 
   return (
     <DashboardShell
