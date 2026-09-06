@@ -177,6 +177,7 @@ MOOLRE_PUBLIC_KEY="..."
 MOOLRE_PRIVATE_KEY="..."
 MOOLRE_ACCOUNT_NUMBER="..."
 MOOLRE_BASE_URL="https://api.moolre.com"
+BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 ```
 
 ### Database Setup

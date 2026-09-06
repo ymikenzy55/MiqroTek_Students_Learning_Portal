@@ -1,12 +1,10 @@
 import { auth } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
+import { put } from "@vercel/blob";
 
-// Image uploads are written to /public/uploads so they are served statically
-// without any external storage dependency. Auth is required; any signed-in
-// user may upload a cover image (instructors create courses, students set
-// avatars).
+// Image uploads are stored in Vercel Blob (cloud storage) so they work in both
+// development and production (Vercel's serverless filesystem is read-only).
+// Auth is required; any signed-in user may upload (instructors create course
+// cover images, students set avatars).
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -16,38 +14,47 @@ const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
-    return new Response("Unauthorized", { status: 401 });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const formData = await request.formData();
   const file = formData.get("file");
   if (!(file instanceof File)) {
-    return new Response("No file provided", { status: 400 });
+    return Response.json({ error: "No file provided" }, { status: 400 });
   }
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    return new Response(
-      `Unsupported file type: ${file.type}. Allowed: ${ALLOWED_TYPES.join(", ")}`,
+    return Response.json(
+      { error: `Unsupported file type: ${file.type}. Allowed: ${ALLOWED_TYPES.join(", ")}` },
       { status: 400 }
     );
   }
 
   if (file.size > MAX_BYTES) {
-    return new Response("File too large. Maximum size is 5 MB.", { status: 413 });
+    return Response.json({ error: "File too large. Maximum size is 5 MB." }, { status: 413 });
+  }
+
+  // Check for Vercel Blob token
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return Response.json(
+      { error: "Upload storage is not configured. Set BLOB_READ_WRITE_TOKEN in your environment variables." },
+      { status: 500 }
+    );
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-  const filename = `${randomUUID()}.${ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
+  const filename = `uploads/${session.user.id}-${Date.now()}.${ext}`;
 
   try {
-    await mkdir(uploadDir, { recursive: true });
-    const bytes = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(uploadDir, filename), bytes);
+    const blob = await put(filename, file, {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: file.type,
+    });
 
-    return Response.json({ url: `/uploads/${filename}` });
+    return Response.json({ url: blob.url });
   } catch (error) {
     console.error("Upload failed:", error);
-    return new Response("Failed to save file", { status: 500 });
+    return Response.json({ error: "Failed to upload file" }, { status: 500 });
   }
 }
