@@ -2,6 +2,7 @@ import { StatCard } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/States";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CourseCard } from "@/components/courses/CourseCard";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
@@ -51,6 +52,7 @@ export default async function StudentDashboard() {
 
   return (
     <div className="space-y-8">
+      <OnboardingTour role="STUDENT" />
       <PageHeader
         title={`Welcome back${session?.user?.name ? ", " + session.user.name.split(" ")[0] : ""}`}
         description="Here is an overview of your learning progress"

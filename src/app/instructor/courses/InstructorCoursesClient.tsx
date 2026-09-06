@@ -1,11 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/States";
 import { CourseModal } from "@/components/courses/CourseModal";
 import { EditCourseModal } from "@/components/courses/EditCourseModal";
-import { deleteCourseAction, toggleTopicCoveredAction } from "@/actions/course-actions";
+import {
+  deleteCourseAction,
+  toggleTopicCoveredAction,
+  addWeeklyTopicAction,
+  deleteWeeklyTopicAction,
+} from "@/actions/course-actions";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { useSearchAndPaginate } from "@/lib/useSearchAndPaginate";
@@ -33,11 +39,15 @@ interface CourseData {
 }
 
 export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) {
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseData | null>(null);
   const [managingTopicsFor, setManagingTopicsFor] = useState<CourseData | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [newTopicTitle, setNewTopicTitle] = useState("");
+  const [addingTopic, setAddingTopic] = useState(false);
+  const [deletingTopicId, setDeletingTopicId] = useState<string | null>(null);
   const [, startToggle] = useTransition();
   const { showToast } = useToast();
 
@@ -56,6 +66,7 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
 
     if (result.success) {
       showToast(`Course "${title}" deleted.`, "success");
+      router.refresh();
     } else {
       showToast(result.error || "Failed to delete course", "error");
     }
@@ -84,6 +95,43 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
         showToast(result.error, "error");
       }
     });
+  }
+
+  async function handleAddTopic() {
+    if (!managingTopicsFor || !newTopicTitle.trim()) return;
+    setAddingTopic(true);
+    const result = await addWeeklyTopicAction(managingTopicsFor.id, newTopicTitle);
+    setAddingTopic(false);
+    if (result.success && result.data) {
+      showToast(`Topic "${result.data.title}" added as Week ${result.data.weekNumber}.`, "success");
+      setManagingTopicsFor({
+        ...managingTopicsFor,
+        weeklyTopics: [
+          ...managingTopicsFor.weeklyTopics,
+          { id: result.data.id, weekNumber: result.data.weekNumber, title: result.data.title, covered: false },
+        ],
+      });
+      setNewTopicTitle("");
+    } else {
+      showToast(result.error || "Failed to add topic.", "error");
+    }
+  }
+
+  async function handleDeleteTopic(topicId: string, topicTitle: string) {
+    if (!managingTopicsFor) return;
+    if (!confirm(`Delete topic "${topicTitle}"?`)) return;
+    setDeletingTopicId(topicId);
+    const result = await deleteWeeklyTopicAction(topicId);
+    setDeletingTopicId(null);
+    if (result.success) {
+      showToast("Topic deleted.", "success");
+      setManagingTopicsFor({
+        ...managingTopicsFor,
+        weeklyTopics: managingTopicsFor.weeklyTopics.filter((t) => t.id !== topicId),
+      });
+    } else {
+      showToast(result.error || "Failed to delete topic.", "error");
+    }
   }
 
   return (
@@ -214,12 +262,21 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
         </>
       )}
 
-      <CourseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <CourseModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          router.refresh();
+        }}
+      />
 
       {editingCourse && (
         <EditCourseModal
           isOpen={true}
-          onClose={() => setEditingCourse(null)}
+          onClose={() => {
+            setEditingCourse(null);
+            router.refresh();
+          }}
           course={editingCourse}
         />
       )}
@@ -253,7 +310,7 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
 
             {managingTopicsFor.weeklyTopics.length === 0 ? (
               <p className="py-8 text-center text-sm text-[var(--muted)]">
-                No weekly topics for this course yet.
+                No weekly topics for this course yet. Add one below.
               </p>
             ) : (
               <ul className="divide-y divide-[var(--border)]">
@@ -267,26 +324,61 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
                         Week {topic.weekNumber}: {topic.title}
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleToggleTopic(topic.id, topic.covered)}
-                      disabled={togglingId === topic.id}
-                      className={cn(
-                        "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
-                        topic.covered
-                          ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                          : "bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--foreground)]"
-                      )}
-                    >
-                      {togglingId === topic.id
-                        ? "..."
-                        : topic.covered
-                          ? "✓ Covered"
-                          : "Mark Covered"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleTopic(topic.id, topic.covered)}
+                        disabled={togglingId === topic.id}
+                        className={cn(
+                          "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
+                          topic.covered
+                            ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                            : "bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--foreground)]"
+                        )}
+                      >
+                        {togglingId === topic.id
+                          ? "..."
+                          : topic.covered
+                            ? "✓ Covered"
+                            : "Mark Covered"}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTopic(topic.id, topic.title)}
+                        disabled={deletingTopicId === topic.id}
+                        className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-500/10 dark:text-rose-400"
+                        title="Delete topic"
+                      >
+                        {deletingTopicId === topic.id ? "..." : "✕"}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
+
+            {/* Add new topic */}
+            <div className="mt-4 flex gap-2 border-t border-[var(--border)] pt-4">
+              <input
+                type="text"
+                value={newTopicTitle}
+                onChange={(e) => setNewTopicTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddTopic();
+                  }
+                }}
+                placeholder="Add a new topic title..."
+                className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm focus:border-[var(--accent)] focus:outline-none"
+              />
+              <Button
+                type="button"
+                onClick={handleAddTopic}
+                disabled={addingTopic || !newTopicTitle.trim()}
+                className="shrink-0"
+              >
+                {addingTopic ? "Adding..." : "+ Add"}
+              </Button>
+            </div>
 
             <div className="mt-4 flex justify-end border-t border-[var(--border)] pt-4">
               <Button variant="outline" onClick={() => setManagingTopicsFor(null)}>

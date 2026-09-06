@@ -20,7 +20,16 @@ export type RealtimeEvent =
       createdAt: string;
     }
   | { type: "message:read"; byUserId: string }
-  | { type: "enrollment:new"; studentName: string; courseTitle: string };
+  | { type: "enrollment:new"; studentName: string; courseTitle: string }
+  | {
+      type: "notification:new";
+      notificationId: string;
+      notificationType: string;
+      title: string;
+      body: string;
+      href: string | null;
+      createdAt: string;
+    };
 
 type Subscriber = (event: RealtimeEvent) => void;
 

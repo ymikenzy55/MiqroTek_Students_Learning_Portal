@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "@/components/providers/SessionProvider";
 import { ServiceWorkerRegister } from "@/components/providers/ServiceWorkerRegister";
+import { PwaInstallPrompt } from "@/components/providers/PwaInstallPrompt";
 import { ToastProvider } from "@/components/ui/Toast";
 
 const geistSans = Geist({
@@ -41,7 +42,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-full flex flex-col bg-[var(--background)]">
         <SessionProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            {children}
+            <PwaInstallPrompt />
+          </ToastProvider>
         </SessionProvider>
         <ServiceWorkerRegister />
       </body>

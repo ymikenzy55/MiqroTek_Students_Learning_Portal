@@ -14,6 +14,7 @@ interface DashboardShellProps {
    * are live. Omit for portals that do not use messaging (e.g. admin).
    */
   initialUnreadCount?: number;
+  initialUnreadNotifications?: number;
   children: React.ReactNode;
 }
 
@@ -22,12 +23,16 @@ export function DashboardShell({
   user,
   basePath,
   initialUnreadCount = 0,
+  initialUnreadNotifications = 0,
   children,
 }: DashboardShellProps) {
   const profileHref = `${basePath}/profile`;
 
   return (
-    <RealtimeProvider initialUnreadCount={initialUnreadCount}>
+    <RealtimeProvider
+      initialUnreadCount={initialUnreadCount}
+      initialUnreadNotifications={initialUnreadNotifications}
+    >
       <div className="min-h-screen bg-[var(--background)]">
         <Sidebar navItems={navItems} user={user} basePath={basePath} />
         <MobileNav navItems={navItems} user={user} />

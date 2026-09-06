@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
+import { createNotification } from "@/actions/notification-actions";
 
 export async function POST(req: Request) {
   try {
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name,
         email,
@@ -40,7 +41,22 @@ export async function POST(req: Request) {
       console.error("Failed to send welcome email:", err)
     );
 
-    return NextResponse.json({ success: true });
+    // Notify all super admins about the new student
+    const superAdmins = await prisma.user.findMany({
+      where: { role: "SUPER_ADMIN" },
+      select: { id: true },
+    });
+    for (const admin of superAdmins) {
+      createNotification({
+        userId: admin.id,
+        type: "student_new",
+        title: "New Student Registered",
+        body: `${name} (${email}) just joined Miqrotek.`,
+        href: "/instructor/students",
+      }).catch((err) => console.error("Failed to create notification:", err));
+    }
+
+    return NextResponse.json({ success: true, userId: user.id });
   } catch {
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }

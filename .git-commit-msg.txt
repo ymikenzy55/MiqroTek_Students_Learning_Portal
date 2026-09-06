@@ -1,15 +1,58 @@
-feat: add search and pagination to all list pages
+feat: notifications, course wizard, onboarding, PWA, password strength
 
-- Create reusable useSearchAndPaginate hook (client-side filter + paginate)
-- Create SearchBar and Pagination UI components
-- Instructor students: search by name/email/phone, 10 per page
-- Instructor courses: search by title/description/duration, 9 per page
-- Instructor instructors: search by name/email, 6 per page
-- Student courses: search by title/description/duration, 6 per page
-  (both "My Courses" and "Available Courses" sections)
-- Pagination shows "Showing X–Y of Z" and page numbers with ellipsis
-- Empty states adapt to show "No results match your search" when filtering
-- Page resets to 1 when search query changes
+Notifications:
+- Add Notification model to Prisma schema
+- Real-time notification system via SSE (no hardcoded data)
+- Notifications created on: new student registration (→ super admin),
+  course enrollment (→ instructor), payment confirmation (→ student + instructor),
+  new message (→ recipient), broadcast/announcement (→ all students),
+  manual enrollment (→ student)
+- Notification bell shows live unread count badge
+- Clicking a notification marks it read and navigates to the relevant page
+- "Mark all as read" clears all unread notifications
+- Notifications API route at /api/notifications
+
+Course Creation:
+- Multi-step wizard with numbered progress indicator (5 steps)
+- Step 1: Title + description (required)
+- Step 2: Duration + price
+- Step 3: Cover image (presets/URL/upload)
+- Step 4: Highlights (what's included)
+- Step 5: Weekly topics (OPTIONAL — can skip and add later)
+- Completion screen with confirmation
+- Add/delete weekly topics anytime from the course card "Topics" modal
+- New server actions: addWeeklyTopicAction, deleteWeeklyTopicAction
+
+Onboarding:
+- Guided tour for first-time students and instructors
+- 7-step walkthrough with icons, progress dots, and skip option
+- Stored in localStorage so it only shows once per role
+- Different steps for student vs instructor portals
+
+PWA:
+- Install prompt component with "Install" / "Not now" buttons
+- Dismissed state stored in localStorage
+- Service worker updated to v3 with stale-while-revalidate for static assets
+- SW now uses skipWaiting + controllerchange to force instant updates
+- Page reloads automatically when a new SW takes over
+- Checks for SW updates on page load and visibility change
+
+Password Strength:
+- Live strength meter with 4-bar visual indicator
+- Evaluates length, character variety, and common passwords
+- Shows suggestions ("Add uppercase", "Add numbers", etc.)
+- Color-coded: red (weak) → amber (fair) → lime (good) → green (strong)
+- Added to registration form and profile change-password form
+- Confirm password shows match/mismatch indicator
+
+Registration:
+- Instant login after registration — no delay
+- If auto-login fails, redirects to login page with toast
+- Welcome toast on successful registration
+
+Instant Updates:
+- Course list refreshes immediately after create/edit/delete
+- router.refresh() called after modal close and action completion
 
 Generated with [Devin](https://devin.ai)
 

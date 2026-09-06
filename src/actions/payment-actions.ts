@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { generatePaymentLink, verifyPayment } from "@/lib/moolre";
+import { createNotification } from "@/actions/notification-actions";
 
 /**
  * Initiate a Moolre hosted checkout for a course enrollment.
@@ -33,6 +34,15 @@ export async function initiateMoolrePaymentAction(courseId: string) {
         update: { status: "ACTIVE" },
         create: { userId, courseId, status: "ACTIVE" },
       });
+
+      // Notify the instructor about the new enrollment
+      createNotification({
+        userId: course.instructorId,
+        type: "enrollment",
+        title: "New Course Enrollment",
+        body: `${session.user.name} just enrolled in "${course.title}".`,
+        href: "/instructor/students",
+      }).catch((err) => console.error("Failed to create notification:", err));
 
       revalidatePath(`/student/courses/${courseId}`);
       revalidatePath("/student/courses");
@@ -139,6 +149,36 @@ export async function verifyAndConfirmPaymentAction(reference: string) {
         data: { status: "ACTIVE" },
       });
     }
+
+    // Fetch course + user for notifications
+    const course = await prisma.course.findUnique({
+      where: { id: payment.courseId },
+      select: { title: true, instructorId: true },
+    });
+    const student = await prisma.user.findUnique({
+      where: { id: payment.userId },
+      select: { name: true },
+    });
+
+    if (course) {
+      // Notify the instructor about the payment
+      createNotification({
+        userId: course.instructorId,
+        type: "payment",
+        title: "Payment Received",
+        body: `${student?.name || "A student"} paid for "${course.title}".`,
+        href: "/instructor/students",
+      }).catch((err) => console.error("Failed to create notification:", err));
+    }
+
+    // Notify the student about the successful payment
+    createNotification({
+      userId: payment.userId,
+      type: "payment",
+      title: "Payment Successful",
+      body: `Your payment for "${course?.title || "your course"}" has been confirmed.`,
+      href: "/student/courses",
+    }).catch((err) => console.error("Failed to create notification:", err));
 
     revalidatePath(`/student/courses/${payment.courseId}`);
     revalidatePath("/student/courses");

@@ -21,12 +21,26 @@ export interface IncomingMessage {
   createdAt: string;
 }
 
+export interface IncomingNotification {
+  notificationId: string;
+  notificationType: string;
+  title: string;
+  body: string;
+  href: string | null;
+  createdAt: string;
+}
+
 interface RealtimeContextValue {
   unreadCount: number;
+  unreadNotifications: number;
   /** Called by thread views after they mark a conversation as read. */
   clearUnreadFor: (senderId: string, amount: number) => void;
   /** Subscribe to incoming messages; returns an unsubscribe function. */
   onMessage: (listener: (message: IncomingMessage) => void) => () => void;
+  /** Subscribe to incoming notifications; returns an unsubscribe function. */
+  onNotification: (listener: (notification: IncomingNotification) => void) => () => void;
+  /** Called when a notification is read to decrement the badge. */
+  decrementNotifications: (amount: number) => void;
 }
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
@@ -38,8 +52,10 @@ export function useRealtime() {
 }
 
 interface RealtimeProviderProps {
-  /** Initial unread count from the database; defaults to 0. */
+  /** Initial unread message count from the database; defaults to 0. */
   initialUnreadCount?: number;
+  /** Initial unread notification count from the database; defaults to 0. */
+  initialUnreadNotifications?: number;
   /** Whether to show a toast on each incoming message; defaults to true. */
   notifyOnMessage?: boolean;
   children: ReactNode;
@@ -47,30 +63,42 @@ interface RealtimeProviderProps {
 
 export function RealtimeProvider({
   initialUnreadCount = 0,
+  initialUnreadNotifications = 0,
   notifyOnMessage = true,
   children,
 }: RealtimeProviderProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
-  const listeners = useRef(new Set<(message: IncomingMessage) => void>());
+  const [unreadNotifications, setUnreadNotifications] = useState(initialUnreadNotifications);
+  const messageListeners = useRef(new Set<(message: IncomingMessage) => void>());
+  const notifListeners = useRef(new Set<(notification: IncomingNotification) => void>());
 
   // Keep the badge in sync when the server re-renders with a fresh count
-  // (navigation, revalidatePath) so it never drifts from the database.
-  useEffect(() => setUnreadCount(initialUnreadCount), [initialUnreadCount]);
+  useEffect(() => {
+    setUnreadCount(initialUnreadCount);
+    setUnreadNotifications(initialUnreadNotifications);
+  }, [initialUnreadCount, initialUnreadNotifications]);
 
   const onMessage = useCallback((listener: (message: IncomingMessage) => void) => {
-    listeners.current.add(listener);
-    return () => listeners.current.delete(listener);
+    messageListeners.current.add(listener);
+    return () => messageListeners.current.delete(listener);
+  }, []);
+
+  const onNotification = useCallback((listener: (notification: IncomingNotification) => void) => {
+    notifListeners.current.add(listener);
+    return () => notifListeners.current.delete(listener);
   }, []);
 
   const clearUnreadFor = useCallback((_senderId: string, amount: number) => {
     setUnreadCount((prev) => Math.max(0, prev - amount));
   }, []);
 
+  const decrementNotifications = useCallback((amount: number) => {
+    setUnreadNotifications((prev) => Math.max(0, prev - amount));
+  }, []);
+
   useEffect(() => {
-    // EventSource reconnects on its own using the `retry` hint from the server,
-    // so there is no manual backoff to manage here.
     const source = new EventSource("/api/realtime");
 
     source.onmessage = (event) => {
@@ -84,7 +112,7 @@ export function RealtimeProvider({
       if (payload.type === "message:new") {
         const incoming: IncomingMessage = payload;
         setUnreadCount((prev) => prev + 1);
-        listeners.current.forEach((listener) => listener(incoming));
+        messageListeners.current.forEach((listener) => listener(incoming));
 
         if (notifyOnMessage) {
           showToast(
@@ -95,12 +123,19 @@ export function RealtimeProvider({
         return;
       }
 
+      if (payload.type === "notification:new") {
+        const incoming: IncomingNotification = payload;
+        setUnreadNotifications((prev) => prev + 1);
+        notifListeners.current.forEach((listener) => listener(incoming));
+        showToast(incoming.title, "info");
+        return;
+      }
+
       if (payload.type === "enrollment:new") {
         showToast(
           `${payload.studentName} just enrolled in ${payload.courseTitle}`,
           "success"
         );
-        // Pulls the instructor's student list/dashboard up to date in place.
         router.refresh();
       }
     };
@@ -109,7 +144,16 @@ export function RealtimeProvider({
   }, [notifyOnMessage, showToast, router]);
 
   return (
-    <RealtimeContext.Provider value={{ unreadCount, clearUnreadFor, onMessage }}>
+    <RealtimeContext.Provider
+      value={{
+        unreadCount,
+        unreadNotifications,
+        clearUnreadFor,
+        onMessage,
+        onNotification,
+        decrementNotifications,
+      }}
+    >
       {children}
     </RealtimeContext.Provider>
   );

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { PasswordStrength } from "@/components/auth/PasswordStrength";
 import {
   changePasswordAction,
   updateProfileAction,
@@ -41,6 +42,7 @@ export function ProfileSettings({ user, profile, basePath }: ProfileSettingsProp
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(user.image || profile?.avatarUrl || "");
+  const [newPassword, setNewPassword] = useState("");
 
   // Local state for settings toggle so it feels instant
   const [notifyOnMessage, setNotifyOnMessage] = useState(user.notifyOnMessage);
@@ -289,7 +291,10 @@ export function ProfileSettings({ user, profile, basePath }: ProfileSettingsProp
             type="password"
             required
             autoComplete="new-password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
           />
+          <PasswordStrength password={newPassword} />
           <Input
             label="Confirm New Password"
             name="confirmPassword"

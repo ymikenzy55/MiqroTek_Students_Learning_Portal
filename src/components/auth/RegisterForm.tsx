@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import { PasswordStrength } from "@/components/auth/PasswordStrength";
 import Link from "next/link";
 
 export function RegisterForm() {
@@ -15,6 +16,8 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -29,27 +32,24 @@ export function RegisterForm() {
       return;
     }
 
-    setLoading(true);
-
     const formData = new FormData(e.currentTarget);
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
-    const password = formData.get("password") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
-      setLoading(false);
       return;
     }
 
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
+
+    // Step 1: Create the account
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -63,6 +63,7 @@ export function RegisterForm() {
       return;
     }
 
+    // Step 2: Immediately sign in — no waiting, no extra round-trip
     const result = await signIn("credentials", {
       email,
       password,
@@ -72,12 +73,14 @@ export function RegisterForm() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Account created! Please log in.");
-      showToast("Account created! Please log in.", "info");
+      // Account was created but auto-login failed — send them to login page
+      showToast("Account created! Please log in to continue.", "info");
+      router.push("/login");
       return;
     }
 
-    showToast("Account created successfully!", "success");
+    // Step 3: Instant redirect to student dashboard
+    showToast("Welcome to Miqrotek! 🎉", "success");
     router.push("/student");
     router.refresh();
   }
@@ -92,14 +95,39 @@ export function RegisterForm() {
       <Input label="Full name" name="name" placeholder="John Doe" required />
       <Input label="Email" name="email" type="email" placeholder="you@example.com" required />
       <Input label="Phone number" name="phone" type="tel" placeholder="+233 123 456 789" />
-      <Input label="Password" name="password" type="password" placeholder="••••••••" required />
-      <Input
-        label="Confirm password"
-        name="confirmPassword"
-        type="password"
-        placeholder="••••••••"
-        required
-      />
+
+      {/* Password with live strength meter */}
+      <div>
+        <Input
+          label="Password"
+          name="password"
+          type="password"
+          placeholder="••••••••"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <PasswordStrength password={password} />
+      </div>
+
+      {/* Confirm password */}
+      <div>
+        <Input
+          label="Confirm password"
+          name="confirmPassword"
+          type="password"
+          placeholder="••••••••"
+          required
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+        {confirmPassword.length > 0 && password !== confirmPassword && (
+          <p className="mt-1 text-xs text-rose-500">Passwords do not match</p>
+        )}
+        {confirmPassword.length > 0 && password === confirmPassword && (
+          <p className="mt-1 text-xs text-emerald-600">✓ Passwords match</p>
+        )}
+      </div>
 
       {/* Consent checkboxes */}
       <div className="space-y-2.5 pt-2">

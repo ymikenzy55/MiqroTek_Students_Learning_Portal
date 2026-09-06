@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 
 /**
  * Client-side search + pagination hook.
@@ -18,11 +18,14 @@ export function useSearchAndPaginate<T>(
   const { searchKeys, pageSize = 10 } = options;
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const prevQuery = useRef(query);
 
-  // Reset to page 1 when the search query changes
-  useEffect(() => {
-    setPage(1);
-  }, [query]);
+  // Reset to page 1 when the search query changes — done in render
+  // rather than an effect to avoid cascading renders.
+  if (prevQuery.current !== query) {
+    prevQuery.current = query;
+    if (page !== 1) setPage(1);
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

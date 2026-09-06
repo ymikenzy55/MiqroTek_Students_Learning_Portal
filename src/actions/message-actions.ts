@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { publish, publishToMany } from "@/lib/realtime";
 import { allowedRecipientIds, canMessage, getThread } from "@/lib/messages";
+import { createNotification } from "@/actions/notification-actions";
 import type { Role } from "@/types";
 
 const MAX_BODY_LENGTH = 4000;
@@ -59,6 +60,15 @@ export async function sendMessageAction(recipientId: string, rawBody: string) {
       broadcast: false,
       createdAt: message.createdAt.toISOString(),
     });
+
+    // Create a notification for the recipient
+    createNotification({
+      userId: recipientId,
+      type: "message",
+      title: `New message from ${session.user.name || "Someone"}`,
+      body: body.slice(0, 120),
+      href: role === "STUDENT" ? "/student/messages" : "/instructor/messages",
+    }).catch((err) => console.error("Failed to create notification:", err));
 
     revalidatePath("/student/messages");
     revalidatePath("/instructor/messages");
@@ -130,6 +140,17 @@ export async function broadcastMessageAction(rawBody: string, recipientIds?: str
       broadcast: true,
       createdAt: createdAt.toISOString(),
     });
+
+    // Create notifications for all recipients
+    for (const targetId of targets) {
+      createNotification({
+        userId: targetId,
+        type: "announcement",
+        title: `Announcement from ${session.user.name || "Your instructor"}`,
+        body: body.slice(0, 120),
+        href: "/student/messages",
+      }).catch((err) => console.error("Failed to create notification:", err));
+    }
 
     revalidatePath("/student/messages");
     revalidatePath("/instructor/messages");

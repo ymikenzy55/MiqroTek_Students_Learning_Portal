@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
+import { useRealtime, type IncomingNotification } from "@/components/providers/RealtimeProvider";
+import {
+  markNotificationReadAction,
+  markAllNotificationsReadAction,
+} from "@/actions/notification-actions";
 import type { NavItem } from "@/types";
 
 interface TopbarProps {
@@ -27,6 +32,16 @@ interface Suggestion {
   group: string;
 }
 
+interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  href: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
 function flattenNav(navItems: NavItem[]): Suggestion[] {
   const out: Suggestion[] = [];
   for (const item of navItems) {
@@ -40,8 +55,29 @@ function flattenNav(navItems: NavItem[]): Suggestion[] {
   return out;
 }
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+const NOTIF_ICONS: Record<string, string> = {
+  enrollment: "book",
+  message: "mail",
+  payment: "card",
+  student_new: "users",
+  announcement: "bell",
+  topic: "calendar",
+};
+
 export function Topbar({ user, profileHref, navItems = [] }: TopbarProps) {
   const router = useRouter();
+  const { unreadNotifications, onNotification, decrementNotifications } = useRealtime();
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -50,6 +86,9 @@ export function Topbar({ user, profileHref, navItems = [] }: TopbarProps) {
   const [mounted, setMounted] = useState(false);
   const [query, setQuery] = useState("");
   const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -68,6 +107,22 @@ export function Topbar({ user, profileHref, navItems = [] }: TopbarProps) {
       .slice(0, 8);
   }, [query, allSuggestions]);
 
+  // Fetch notifications when the dropdown opens
+  const fetchNotifications = useCallback(async () => {
+    setLoadingNotifs(true);
+    try {
+      const res = await fetch("/api/notifications", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingNotifs(false);
+    }
+  }, []);
+
   useEffect(() => {
     setMounted(true);
     function onClick(e: MouseEvent) {
@@ -77,13 +132,33 @@ export function Topbar({ user, profileHref, navItems = [] }: TopbarProps) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setNotifOpen(false);
       }
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        // Don't close the search bar itself, just the dropdown
-      }
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  // Listen for real-time notifications
+  useEffect(() => {
+    return onNotification((notif: IncomingNotification) => {
+      setNotifications((prev) => [
+        {
+          id: notif.notificationId,
+          type: notif.notificationType,
+          title: notif.title,
+          body: notif.body,
+          href: notif.href,
+          readAt: null,
+          createdAt: notif.createdAt,
+        },
+        ...prev,
+      ]);
+    });
+  }, [onNotification]);
+
+  // Fetch notifications when dropdown opens
+  useEffect(() => {
+    if (notifOpen) fetchNotifications();
+  }, [notifOpen, fetchNotifications]);
 
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown") {
@@ -103,6 +178,35 @@ export function Topbar({ user, profileHref, navItems = [] }: TopbarProps) {
     } else if (e.key === "Escape") {
       setQuery("");
       setSearchOpen(false);
+    }
+  }
+
+  async function handleNotifClick(notif: NotificationItem) {
+    // Mark as read locally
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notif.id ? { ...n, readAt: new Date().toISOString() } : n))
+    );
+    decrementNotifications(1);
+
+    // Mark as read on server
+    await markNotificationReadAction(notif.id);
+
+    // Navigate if there's a href
+    if (notif.href) {
+      setNotifOpen(false);
+      router.push(notif.href);
+    }
+  }
+
+  async function handleMarkAllRead() {
+    setMarkingAll(true);
+    const result = await markAllNotificationsReadAction();
+    setMarkingAll(false);
+    if (result.success) {
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, readAt: n.readAt || new Date().toISOString() }))
+      );
+      decrementNotifications(unreadNotifications);
     }
   }
 
@@ -198,7 +302,11 @@ export function Topbar({ user, profileHref, navItems = [] }: TopbarProps) {
           aria-expanded={notifOpen}
         >
           <Icon name="bell" className="h-5 w-5" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[var(--accent)] ring-2 ring-[var(--white)]" />
+          {unreadNotifications > 0 && (
+            <span className="absolute right-2 top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-bold text-white ring-2 ring-[var(--white)]">
+              {unreadNotifications > 9 ? "9+" : unreadNotifications}
+            </span>
+          )}
         </button>
 
         {notifOpen && (
@@ -208,31 +316,58 @@ export function Topbar({ user, profileHref, navItems = [] }: TopbarProps) {
           >
             <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
               <p className="text-sm font-semibold text-[var(--foreground)]">Notifications</p>
-              <span className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">3 new</span>
+              {unreadNotifications > 0 && (
+                <span className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]">
+                  {unreadNotifications} new
+                </span>
+              )}
             </div>
             <div className="max-h-80 overflow-y-auto">
-              <NotifItem
-                title="New course material"
-                desc="Weekly Topic 5 has been posted to your course"
-                time="2h ago"
-              />
-              <NotifItem
-                title="Assessment due soon"
-                desc="You have an assessment due in 2 days"
-                time="5h ago"
-              />
-              <NotifItem
-                title="New enrollment"
-                desc="A new student enrolled in your course"
-                time="1d ago"
-              />
+              {loadingNotifs ? (
+                <div className="px-4 py-8 text-center text-sm text-[var(--muted)]">
+                  Loading...
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-[var(--muted)]">
+                  No notifications yet.
+                </div>
+              ) : (
+                notifications.map((notif) => (
+                  <button
+                    key={notif.id}
+                    onClick={() => handleNotifClick(notif)}
+                    className={cn(
+                      "flex w-full gap-3 border-b border-[var(--border)] px-4 py-3 text-left transition-colors hover:bg-[var(--surface)]",
+                      !notif.readAt && "bg-[var(--accent)]/5"
+                    )}
+                  >
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface)]">
+                      <Icon
+                        name={NOTIF_ICONS[notif.type] || "bell"}
+                        className="h-4 w-4 text-[var(--accent)]"
+                      />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-[var(--foreground)]">{notif.title}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-[var(--muted)]">{notif.body}</p>
+                      <p className="mt-1 text-[11px] text-[var(--muted)]">{timeAgo(notif.createdAt)}</p>
+                    </div>
+                    {!notif.readAt && (
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]" />
+                    )}
+                  </button>
+                ))
+              )}
             </div>
-            <button
-              onClick={() => setNotifOpen(false)}
-              className="w-full border-t border-[var(--border)] px-4 py-2.5 text-center text-sm font-medium text-[var(--accent)] transition-colors hover:bg-[var(--surface)]"
-            >
-              Mark all as read
-            </button>
+            {notifications.length > 0 && unreadNotifications > 0 && (
+              <button
+                onClick={handleMarkAllRead}
+                disabled={markingAll}
+                className="w-full border-t border-[var(--border)] px-4 py-2.5 text-center text-sm font-medium text-[var(--accent)] transition-colors hover:bg-[var(--surface)] disabled:opacity-50"
+              >
+                {markingAll ? "Marking..." : "Mark all as read"}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -305,19 +440,6 @@ export function Topbar({ user, profileHref, navItems = [] }: TopbarProps) {
           signOut({ callbackUrl: "/login" });
         }}
       />
-    </div>
-  );
-}
-
-function NotifItem({ title, desc, time }: { title: string; desc: string; time: string }) {
-  return (
-    <div className="flex gap-3 border-b border-[var(--border)] px-4 py-3 transition-colors hover:bg-[var(--surface)] cursor-pointer">
-      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]" />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-[var(--foreground)]">{title}</p>
-        <p className="mt-0.5 text-xs text-[var(--muted)]">{desc}</p>
-        <p className="mt-1 text-[11px] text-[var(--muted)]">{time}</p>
-      </div>
     </div>
   );
 }

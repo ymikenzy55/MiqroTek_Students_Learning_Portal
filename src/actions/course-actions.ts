@@ -140,6 +140,86 @@ export async function updateCourseAction(courseId: string, formData: FormData) {
 }
 
 /**
+ * Add a single weekly topic to an existing course.
+ */
+export async function addWeeklyTopicAction(courseId: string, title: string, description?: string) {
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") {
+    return { success: false as const, error: "Unauthorized. Instructor access required." };
+  }
+
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { instructorId: true },
+  });
+
+  if (!course || course.instructorId !== session.user.id) {
+    return { success: false as const, error: "Course not found or you do not own it." };
+  }
+
+  const trimmed = title.trim();
+  if (!trimmed) {
+    return { success: false as const, error: "Topic title is required." };
+  }
+
+  // Get the next week number
+  const lastTopic = await prisma.weeklyTopic.findFirst({
+    where: { courseId },
+    orderBy: { weekNumber: "desc" },
+    select: { weekNumber: true },
+  });
+
+  const weekNumber = (lastTopic?.weekNumber || 0) + 1;
+
+  try {
+    const topic = await prisma.weeklyTopic.create({
+      data: { courseId, title: trimmed, description: description?.trim() || undefined, weekNumber },
+    });
+
+    revalidatePath(`/instructor/courses`);
+    revalidatePath(`/student/courses/${courseId}`);
+
+    return { success: true as const, data: { id: topic.id, weekNumber: topic.weekNumber, title: topic.title } };
+  } catch (error: any) {
+    console.error("Error adding topic:", error);
+    return { success: false as const, error: error.message || "Failed to add topic." };
+  }
+}
+
+/**
+ * Delete a weekly topic from a course.
+ */
+export async function deleteWeeklyTopicAction(topicId: string) {
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") {
+    return { success: false as const, error: "Unauthorized. Instructor access required." };
+  }
+
+  const topic = await prisma.weeklyTopic.findUnique({
+    where: { id: topicId },
+    select: { id: true, courseId: true, course: { select: { instructorId: true } } },
+  });
+
+  if (!topic || topic.course.instructorId !== session.user.id) {
+    return { success: false as const, error: "Topic not found or you do not own it." };
+  }
+
+  try {
+    await prisma.weeklyTopic.delete({ where: { id: topicId } });
+
+    revalidatePath(`/instructor/courses`);
+    revalidatePath(`/student/courses/${topic.courseId}`);
+
+    return { success: true as const };
+  } catch (error: any) {
+    console.error("Error deleting topic:", error);
+    return { success: false as const, error: error.message || "Failed to delete topic." };
+  }
+}
+
+/**
  * Toggle the instructor-driven milestone: mark a weekly topic as covered
  * (completed) or not. Students see covered topics as completed progress.
  */

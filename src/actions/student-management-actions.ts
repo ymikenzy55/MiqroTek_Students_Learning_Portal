@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { createNotification } from "@/actions/notification-actions";
 
 export async function enrollStudentInCourseAction(courseId: string, studentEmail: string) {
   const session = await auth();
@@ -56,6 +57,15 @@ export async function enrollStudentInCourseAction(courseId: string, studentEmail
           status: "PAID",
         },
       });
+
+      // Notify the student about the enrollment
+      createNotification({
+        userId: student.id,
+        type: "enrollment",
+        title: "Course Enrollment",
+        body: `You have been enrolled in "${course.title}".`,
+        href: "/student/courses",
+      }).catch((err) => console.error("Failed to create notification:", err));
     }
 
     revalidatePath("/instructor/students");
