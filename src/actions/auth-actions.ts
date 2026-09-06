@@ -75,9 +75,7 @@ export async function loginAction(formData: FormData) {
     const redirectTo =
       user.role === "STUDENT"
         ? "/student"
-        : user.role === "INSTRUCTOR"
-          ? "/instructor"
-          : "/admin";
+        : "/instructor";
 
     await signIn("credentials", { email, password, redirectTo });
   } catch (error) {

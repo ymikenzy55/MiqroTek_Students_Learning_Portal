@@ -7,14 +7,21 @@ export default auth((req) => {
 
   const isLoginPage = pathname === "/login";
   const isForgotPasswordPage = pathname === "/forgot-password" || pathname === "/reset-password";
-  const isPublicPage = pathname === "/" || isLoginPage || isForgotPasswordPage || pathname.startsWith("/api/auth") || pathname.startsWith("/api/forgot-password") || pathname.startsWith("/api/reset-password");
+  const isPaymentPage = pathname.startsWith("/payment/");
+  const isApiRoute = pathname.startsWith("/api/") && !pathname.startsWith("/api/auth");
+  const isPublicPage = pathname === "/" || isLoginPage || isForgotPasswordPage || isPaymentPage || pathname.startsWith("/api/auth") || pathname.startsWith("/api/forgot-password") || pathname.startsWith("/api/reset-password");
+
+  // API routes (other than auth) handle their own auth/401 — don't redirect
+  // them to the login HTML page, which would break SSE/EventSource clients.
+  if (isApiRoute) {
+    return NextResponse.next();
+  }
 
   if (isPublicPage) {
     if (isLoginPage && session?.user) {
       const role = session.user.role;
       if (role === "STUDENT") return NextResponse.redirect(new URL("/student", req.url));
-      if (role === "INSTRUCTOR") return NextResponse.redirect(new URL("/instructor", req.url));
-      if (role === "SUPER_ADMIN") return NextResponse.redirect(new URL("/admin", req.url));
+      if (role === "SUPER_ADMIN") return NextResponse.redirect(new URL("/instructor", req.url));
     }
     return NextResponse.next();
   }
@@ -33,7 +40,7 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (instructorRoutes && role !== "INSTRUCTOR" && role !== "SUPER_ADMIN") {
+  if (instructorRoutes && role !== "SUPER_ADMIN") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 

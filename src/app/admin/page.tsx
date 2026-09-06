@@ -17,7 +17,7 @@ export default async function AdminDashboard() {
     courses,
   ] = await Promise.all([
     prisma.user.count({ where: { role: "STUDENT" } }),
-    prisma.user.count({ where: { role: "INSTRUCTOR" } }),
+    prisma.user.count({ where: { role: "SUPER_ADMIN" } }),
     prisma.enrollment.count(),
     prisma.payment.count(),
     prisma.course.count({ where: { status: "ACTIVE" } }),

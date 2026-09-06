@@ -14,7 +14,7 @@ export default async function InstructorDashboard() {
   }
 
   // Optimized: Parallel fetch with transaction for counts
-  const [courses, [studentCount, assessmentCount, sessionCount]] = await Promise.all([
+  const [courses, studentCount, assessmentCount, sessionCount] = await Promise.all([
     prisma.course.findMany({
       where: { instructorId: userId },
       select: {
@@ -29,19 +29,17 @@ export default async function InstructorDashboard() {
         _count: { select: { weeklyTopics: true, enrollments: true } },
       },
       orderBy: { createdAt: "desc" },
-      take: 20, // Limit for dashboard view
+      take: 20,
     }),
-    prisma.$transaction([
-      prisma.enrollment.count({ 
-        where: { course: { instructorId: userId } } 
-      }),
-      prisma.assessment.count({ 
-        where: { course: { instructorId: userId } } 
-      }),
-      prisma.attendanceSession.count({ 
-        where: { instructorId: userId } 
-      }),
-    ]),
+    prisma.enrollment.count({ 
+      where: { course: { instructorId: userId } } 
+    }),
+    prisma.assessment.count({ 
+      where: { course: { instructorId: userId } } 
+    }),
+    prisma.attendanceSession.count({ 
+      where: { instructorId: userId } 
+    }),
   ]);
 
   return (

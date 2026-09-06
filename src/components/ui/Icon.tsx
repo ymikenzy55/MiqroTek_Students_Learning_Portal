@@ -34,6 +34,8 @@ const paths: Record<string, string> = {
   login: "M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1",
   layers: "M12 2l9 5-9 5-9-5 9-5zm9 10l-9 5-9-5m18 5l-9 5-9-5",
   award: "M12 15a6 6 0 100-12 6 6 0 000 12zm0 0l-3.5 6L12 19l3.5 2L12 15z",
+  send: "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z",
+  megaphone: "M3 11l14-7v16l-14-7v-2zM3 11H2v2h1v-2zm14 8a4 4 0 003-3.87V8.87A4 4 0 0017 5",
 };
 
 export function Icon({ name, className = "h-5 w-5" }: IconProps) {

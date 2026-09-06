@@ -20,6 +20,7 @@ model User {
   passwordHash    String
   role            Role     @default(STUDENT)
   image           String?
+  notifyOnMessage Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -52,6 +53,10 @@ model User {
 
   // Password resets
   passwordResets     PasswordReset[]
+
+  // Direct messages
+  sentMessages       Message[] @relation("SentMessages")
+  receivedMessages   Message[] @relation("ReceivedMessages")
 
   @@index([role])
   @@index([email, role])
@@ -87,12 +92,16 @@ model Course {
   id          String    @id @default(cuid())
   title       String
   description String?
+  /// Bullet-pointed "what's included" / "what you'll learn" list shown on the
+  /// course detail page. Stored as a Postgres text array; one entry per bullet.
+  highlights  String[]  @default([])
   price       Float     @default(0)
   currency    String    @default("GHS")
   status      String    @default("ACTIVE")
   startDate   DateTime?
   endDate     DateTime?
   duration    String?
+  image       String?
   instructorId String
   instructor   User      @relation(fields: [instructorId], references: [id])
   createdAt    DateTime  @default(now())
@@ -120,12 +129,17 @@ model WeeklyTopic {
   description String?
   objectives  String?
   date        DateTime?
+  // Instructor-driven milestone tracking: the instructor marks a topic as
+  // covered for the whole course, and students see it as completed progress.
+  covered     Boolean   @default(false)
+  coveredAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   resources    Resource[]
   assessments  Assessment[]
 
+  @@index([courseId])
   @@map("weekly_topics")
 }
 
@@ -217,6 +231,9 @@ model Payment {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  @@index([userId])
+  @@index([courseId])
+  @@index([userId, status])
   @@map("payments")
 }
 
@@ -235,6 +252,9 @@ model Submission {
 
   answers      Answer[]
 
+  @@index([userId])
+  @@index([assessmentId])
+  @@index([userId, assessmentId])
   @@map("submissions")
 }
 
@@ -289,6 +309,9 @@ model Bundle {
   startDate   DateTime?
   endDate     DateTime?
   status      String    @default("ACTIVE")
+  /// Minimum number of "PRESENT" or "LATE" attendance sessions a student must
+  /// have across the instructor's courses to be eligible for this bundle.
+  requiredAttendanceCount Int @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -322,6 +345,27 @@ model BundleAssignment {
 
   @@unique([bundleId, userId])
   @@map("bundle_assignments")
+}
+
+/// A direct message between two users. Broadcasts and bulk sends are fanned out
+/// to one row per recipient sharing a `broadcastId`, so read state stays
+/// per-recipient and thread queries remain a simple two-party lookup.
+model Message {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
+  body        String
+  broadcastId String?
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([recipientId, readAt])
+  @@index([recipientId, senderId, createdAt])
+  @@index([senderId, recipientId, createdAt])
+  @@index([broadcastId])
+  @@map("messages")
 }
 
 model PasswordReset {

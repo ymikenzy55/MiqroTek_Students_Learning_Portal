@@ -1,10 +1,25 @@
-import { EmptyState } from "@/components/ui/States";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { InstructorListClient } from "./InstructorListClient";
 
-export default function AdminInstructors() {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[var(--foreground)]">Instructors</h1>
-      <EmptyState title="No instructors" description="All instructor records will appear here." />
-    </div>
-  );
+export default async function AdminInstructorsPage() {
+  const session = await auth();
+  const currentUserId = session?.user?.id || "";
+
+  const instructors = await prisma.user.findMany({
+    where: {
+      role: "SUPER_ADMIN",
+    },
+    include: {
+      instructorProfile: {
+        select: { title: true, bio: true },
+      },
+      _count: {
+        select: { courses: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return <InstructorListClient instructors={instructors} currentUserId={currentUserId} />;
 }

@@ -1,5 +1,19 @@
-const CACHE_NAME = "miqrotek-v1";
-const STATIC_ASSETS = ["/", "/login", "/manifest.json"];
+const CACHE_NAME = "miqrotek-v2";
+const STATIC_ASSETS = ["/manifest.json"];
+
+/**
+ * Only content-hashed or version-pinned assets may be served from cache.
+ * HTML documents and RSC payloads are per-user and change with every deploy —
+ * serving a stale one against fresh JS causes React hydration mismatches, and
+ * caching an authenticated page leaks it to the next user of the device.
+ */
+function isCacheableAsset(url) {
+  return (
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/icons/") ||
+    url.pathname === "/manifest.json"
+  );
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -28,21 +42,20 @@ self.addEventListener("fetch", (event) => {
 
   if (url.origin !== self.location.origin) return;
 
-  if (url.pathname.startsWith("/api/")) return;
+  // Everything else (documents, RSC payloads, /api) goes straight to network.
+  if (!isCacheableAsset(url)) return;
 
   event.respondWith(
     caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request)
-        .then((response) => {
-          if (response && response.status === 200 && response.type === "basic") {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          }
-          return response;
-        })
-        .catch(() => cached);
+      if (cached) return cached;
 
-      return cached || fetchPromise;
+      return fetch(request).then((response) => {
+        if (response && response.status === 200 && response.type === "basic") {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        }
+        return response;
+      });
     })
   );
 });

@@ -60,9 +60,11 @@ export function Sidebar({ navItems, user }: SidebarProps) {
       <Modal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        title="Sign out?"
-        description="You will be returned to the login page and will need to sign in again to access your dashboard."
-        confirmLabel="Sign out"
+        title={`Sign out of Miqrotek?`}
+        description={`You are signed in as ${user.email}. You will be returned to the login page and will need to enter your password again to get back in.`}
+        confirmLabel="Yes, sign me out"
+        cancelLabel="Stay signed in"
+        icon="logout"
         destructive
         loading={signingOut}
         onConfirm={() => {

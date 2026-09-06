@@ -1,25 +1,48 @@
-import { Card } from "@/components/ui/Card";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { ProfileSettings } from "@/components/profile/ProfileSettings";
 
 export default async function StudentProfile() {
   const session = await auth();
+  if (!session?.user?.id) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      image: true,
+      role: true,
+      notifyOnMessage: true,
+      studentProfile: { select: { bio: true, avatarUrl: true } },
+    },
+  });
+
+  if (!user) return null;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[var(--foreground)]">Profile</h1>
-      <Card>
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--surface)] text-xl font-medium text-[var(--muted)]">
-              {session?.user?.name?.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-[var(--foreground)]">{session?.user?.name}</p>
-              <p className="text-sm text-[var(--muted)]">{session?.user?.email}</p>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
+    <ProfileSettings
+      user={{
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        image: user.image,
+        role: user.role,
+        notifyOnMessage: user.notifyOnMessage,
+      }}
+      profile={
+        user.studentProfile
+          ? {
+              bio: user.studentProfile.bio,
+              avatarUrl: user.studentProfile.avatarUrl,
+              title: null,
+            }
+          : null
+      }
+      basePath="/student"
+    />
   );
 }

@@ -8,11 +8,21 @@ export interface SessionUser {
   image?: string | null;
 }
 
+/** Which role each sign-in portal (tab) on the login page accepts. */
+export const PORTAL_ROLES = {
+  student: "STUDENT",
+  staff: "SUPER_ADMIN",
+} as const satisfies Record<string, Role>;
+
+export type Portal = keyof typeof PORTAL_ROLES;
+
 export interface NavItem {
   label: string;
   href: string;
   icon: string;
   children?: { label: string; href: string }[];
+  /** Renders the live unread-message count next to this item. */
+  badge?: "unreadMessages";
 }
 
 export const STUDENT_NAV: NavItem[] = [
@@ -28,6 +38,7 @@ export const STUDENT_NAV: NavItem[] = [
     ],
   },
   { label: "Attendance", href: "/student/attendance", icon: "calendar" },
+  { label: "Messages", href: "/student/messages", icon: "mail", badge: "unreadMessages" },
   { label: "Profile", href: "/student/profile", icon: "user" },
 ];
 
@@ -44,7 +55,9 @@ export const INSTRUCTOR_NAV: NavItem[] = [
     ],
   },
   { label: "Students", href: "/instructor/students", icon: "users" },
+  { label: "Instructors", href: "/instructor/instructors", icon: "briefcase" },
   { label: "Attendance", href: "/instructor/attendance", icon: "calendar" },
+  { label: "Messages", href: "/instructor/messages", icon: "mail", badge: "unreadMessages" },
   { label: "Profile", href: "/instructor/profile", icon: "user" },
 ];
 

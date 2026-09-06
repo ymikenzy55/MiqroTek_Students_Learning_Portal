@@ -6,25 +6,61 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === "production",
   },
   
-  // Optimize images
+  // Optimize images and CDNs
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
-      // Add your image CDN domains here when needed
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "avatar.iran.liara.run",
+      },
     ],
   },
 
-  // Experimental features for better performance
-  experimental: {
-    // Optimize package imports to reduce bundle size
-    optimizePackageImports: ["lucide-react", "@heroicons/react"],
+  // HTTP headers for caching and CDN edge distribution
+  async headers() {
+    return [
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/icons/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, max-age=0, s-maxage=0",
+          },
+        ],
+      },
+    ];
   },
 
-  // Enable compression
-  compress: true,
+  // Package import optimization
+  experimental: {
+    optimizePackageImports: ["bcryptjs", "@prisma/client"],
+  },
 
-  // Optimize fonts
-  optimizeFonts: true,
+  // Compression & Font Optimization
+  compress: true,
 };
 
 export default nextConfig;

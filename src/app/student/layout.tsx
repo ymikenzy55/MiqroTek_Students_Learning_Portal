@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { STUDENT_NAV } from "@/types";
+import { getUnreadCount } from "@/lib/messages";
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -18,6 +19,8 @@ export default async function StudentLayout({ children }: { children: React.Reac
 
   console.log(`✅ Student layout - Access granted for: ${session.user.email}`);
 
+  const initialUnreadCount = await getUnreadCount(session.user.id).catch(() => 0);
+
   return (
     <DashboardShell
       navItems={STUDENT_NAV}
@@ -27,6 +30,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
         role: session.user.role,
       }}
       basePath="/student"
+      initialUnreadCount={initialUnreadCount}
     >
       {children}
     </DashboardShell>

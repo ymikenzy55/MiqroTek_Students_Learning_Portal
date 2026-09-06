@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, isNavItemActive, resolveActiveHref } from "@/lib/utils";
 import { Icon } from "@/components/ui/Icon";
+import { useRealtime } from "@/components/providers/RealtimeProvider";
 import type { NavItem } from "@/types";
 import { signOut } from "next-auth/react";
 import { Modal } from "@/components/ui/Modal";
@@ -21,17 +22,22 @@ export function MobileNav({ navItems, user }: MobileNavProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
+  const { unreadCount } = useRealtime();
+
   const mainItems = navItems.slice(0, 4);
+  const activeHref = resolveActiveHref(pathname, navItems);
+  // When the messages entry does not fit in the bottom bar, surface its unread
+  // state on the "More" button instead so it is never hidden.
+  const unreadInDrawer =
+    unreadCount > 0 &&
+    navItems.slice(4).some((item) => item.badge === "unreadMessages");
 
   return (
     <>
       {/* Bottom tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-[var(--border)] bg-[var(--white)] pb-[env(safe-area-inset-bottom)] lg:hidden">
         {mainItems.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            pathname.startsWith(item.href + "/") ||
-            item.children?.some((c) => pathname.startsWith(c.href));
+          const isActive = isNavItemActive(activeHref, item);
           return (
             <Link
               key={item.label}
@@ -43,11 +49,19 @@ export function MobileNav({ navItems, user }: MobileNavProps) {
             >
               <span
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300",
+                  "relative flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300",
                   isActive ? "bg-[var(--accent)]/10" : "group-active:scale-90"
                 )}
               >
                 <Icon name={item.icon} className="h-5 w-5" />
+                {item.badge === "unreadMessages" && unreadCount > 0 && (
+                  <span
+                    className="absolute -right-1 -top-0.5 min-w-[16px] rounded-full bg-[var(--accent)] px-1 text-[10px] font-semibold leading-4 tabular-nums text-white"
+                    aria-label={`${unreadCount} unread messages`}
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </span>
               <span className="max-w-full truncate">{item.label}</span>
             </Link>
@@ -57,8 +71,16 @@ export function MobileNav({ navItems, user }: MobileNavProps) {
           onClick={() => setOpen(true)}
           className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-[var(--muted)]"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full">
+          <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
             <Icon name="menu" className="h-5 w-5" />
+            {unreadInDrawer && (
+              <span
+                className="absolute -right-1 -top-0.5 min-w-[16px] rounded-full bg-[var(--accent)] px-1 text-[10px] font-semibold leading-4 tabular-nums text-white"
+                aria-label={`${unreadCount} unread messages`}
+              >
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </span>
           More
         </button>
@@ -127,9 +149,11 @@ export function MobileNav({ navItems, user }: MobileNavProps) {
       <Modal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        title="Sign out?"
-        description="You will be returned to the login page and will need to sign in again to access your dashboard."
-        confirmLabel="Sign out"
+        title="Sign out of Miqrotek?"
+        description={`You are signed in as ${user.email}. You will be returned to the login page and will need to enter your password again to get back in.`}
+        confirmLabel="Yes, sign me out"
+        cancelLabel="Stay signed in"
+        icon="logout"
         destructive
         loading={signingOut}
         onConfirm={() => {

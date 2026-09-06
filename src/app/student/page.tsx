@@ -14,7 +14,7 @@ export default async function StudentDashboard() {
   }
 
   // Optimized: Single parallel fetch instead of sequential queries
-  const [enrollments, stats] = await Promise.all([
+  const [enrollments, pendingAssessments, attendanceCount, bundleCount] = await Promise.all([
     prisma.enrollment.findMany({
       where: { userId },
       include: {
@@ -32,28 +32,21 @@ export default async function StudentDashboard() {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 10, // Limit to recent enrollments for dashboard
+      take: 10,
     }),
-    prisma.$transaction([
-      // Pending assessments
-      prisma.assessment.count({
-        where: {
-          course: { enrollments: { some: { userId } } },
-          submissions: { none: { userId } },
-        },
-      }),
-      // Attendance count
-      prisma.attendanceRecord.count({ 
-        where: { userId, status: "PRESENT" } 
-      }),
-      // Bundle count
-      prisma.bundleAssignment.count({ 
-        where: { userId } 
-      }),
-    ]),
+    prisma.assessment.count({
+      where: {
+        course: { enrollments: { some: { userId } } },
+        submissions: { none: { userId } },
+      },
+    }),
+    prisma.attendanceRecord.count({ 
+      where: { userId, status: "PRESENT" } 
+    }),
+    prisma.bundleAssignment.count({ 
+      where: { userId } 
+    }),
   ]);
-
-  const [pendingAssessments, attendanceCount, bundleCount] = stats;
   const totalTopics = enrollments.reduce((sum, e) => sum + e.course._count.weeklyTopics, 0);
 
   return (

@@ -3,18 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, isNavItemActive, resolveActiveHref } from "@/lib/utils";
 import { Icon } from "@/components/ui/Icon";
+import { useRealtime } from "@/components/providers/RealtimeProvider";
 import type { NavItem } from "@/types";
-
-function isItemActive(pathname: string, item: NavItem) {
-  if (item.children?.length) {
-    return item.children.some(
-      (c) => pathname === c.href || pathname.startsWith(c.href + "/")
-    );
-  }
-  return pathname === item.href || pathname.startsWith(item.href + "/");
-}
 
 interface SidebarNavProps {
   navItems: NavItem[];
@@ -23,22 +15,22 @@ interface SidebarNavProps {
 
 export function SidebarNav({ navItems, onNavigate }: SidebarNavProps) {
   const pathname = usePathname();
-  const [openGroups, setOpenGroups] = useState<string[]>(() =>
-    navItems.filter((i) => isItemActive(pathname, i) && i.children).map((i) => i.label)
-  );
+  const { unreadCount } = useRealtime();
+  const activeHref = resolveActiveHref(pathname, navItems);
+  // Groups default to open while they contain the active route; an explicit
+  // toggle by the user overrides that default until they toggle it again.
+  const [toggledGroups, setToggledGroups] = useState<Record<string, boolean>>({});
 
-  function toggleGroup(label: string) {
-    setOpenGroups((prev) =>
-      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
-    );
+  function toggleGroup(label: string, expanded: boolean) {
+    setToggledGroups((prev) => ({ ...prev, [label]: !expanded }));
   }
 
   return (
     <nav className="flex-1 space-y-1.5 overflow-y-auto py-4 pl-4">
       {navItems.map((item) => {
-        const active = isItemActive(pathname, item);
+        const active = isNavItemActive(activeHref, item);
         const hasChildren = !!item.children?.length;
-        const expanded = openGroups.includes(item.label);
+        const expanded = toggledGroups[item.label] ?? active;
 
         return (
           <div key={item.label}>
@@ -59,7 +51,7 @@ export function SidebarNav({ navItems, onNavigate }: SidebarNavProps) {
 
               {hasChildren ? (
                 <button
-                  onClick={() => toggleGroup(item.label)}
+                  onClick={() => toggleGroup(item.label, expanded)}
                   aria-expanded={expanded}
                   className={cn(
                     "relative flex w-full items-center gap-3 rounded-l-full py-3 pl-4 pr-3 text-sm font-medium transition-all duration-300",
@@ -90,7 +82,15 @@ export function SidebarNav({ navItems, onNavigate }: SidebarNavProps) {
                   )}
                 >
                   <Icon name={item.icon} className="h-5 w-5 shrink-0" />
-                  <span>{item.label}</span>
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge === "unreadMessages" && unreadCount > 0 && (
+                    <span
+                      className="shrink-0 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white"
+                      aria-label={`${unreadCount} unread messages`}
+                    >
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
               )}
             </div>
@@ -106,8 +106,7 @@ export function SidebarNav({ navItems, onNavigate }: SidebarNavProps) {
                 <div className="overflow-hidden">
                   <div className="mt-1 space-y-0.5 pb-1 pl-7 pr-3">
                     {item.children!.map((child) => {
-                      const childActive =
-                        pathname === child.href || pathname.startsWith(child.href + "/");
+                      const childActive = activeHref === child.href;
                       return (
                         <Link
                           key={child.href}
