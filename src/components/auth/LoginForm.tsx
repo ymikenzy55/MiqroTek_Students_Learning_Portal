@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +29,9 @@ export function LoginForm({ portal }: LoginFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showGoogleConsent, setShowGoogleConsent] = useState(false);
+  const [googleAgreedTerms, setGoogleAgreedTerms] = useState(false);
+  const [googleAgreedPrivacy, setGoogleAgreedPrivacy] = useState(false);
 
   // Show error from Google sign-in redirect (e.g. staff_google_blocked)
   const googleError = searchParams.get("error");
@@ -93,6 +97,11 @@ export function LoginForm({ portal }: LoginFormProps) {
     await signIn("google", { callbackUrl: "/student" });
   }
 
+  function onGoogleButtonClick() {
+    // Show consent modal first — user must agree before redirecting to Google
+    setShowGoogleConsent(true);
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {(error || googleErrorMessage) && (
@@ -133,7 +142,7 @@ export function LoginForm({ portal }: LoginFormProps) {
           </div>
           <button
             type="button"
-            onClick={handleGoogleSignIn}
+            onClick={onGoogleButtonClick}
             disabled={googleLoading || loading}
             className="flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--white)] px-4 py-2.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface)] disabled:opacity-50"
           >
@@ -162,6 +171,78 @@ export function LoginForm({ portal }: LoginFormProps) {
             {googleLoading ? "Connecting..." : "Continue with Google"}
           </button>
         </>
+      )}
+
+      {/* Google consent modal */}
+      {showGoogleConsent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--white)] p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between border-b border-[var(--border)] pb-4">
+              <h3 className="text-lg font-semibold text-[var(--foreground)]">
+                Before you continue
+              </h3>
+              <button
+                onClick={() => setShowGoogleConsent(false)}
+                className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="mb-4 text-sm text-[var(--muted)]">
+              To create your Miqrotek student account, please review and agree to our policies:
+            </p>
+
+            <div className="space-y-3">
+              <label className="flex items-start gap-2.5 text-sm text-[var(--foreground)] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={googleAgreedTerms}
+                  onChange={(e) => setGoogleAgreedTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--border)] accent-[var(--accent)]"
+                />
+                <span>
+                  I agree to the{" "}
+                  <Link href="/terms" target="_blank" className="font-medium text-[var(--accent)] hover:underline">
+                    Terms of Service
+                  </Link>
+                </span>
+              </label>
+              <label className="flex items-start gap-2.5 text-sm text-[var(--foreground)] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={googleAgreedPrivacy}
+                  onChange={(e) => setGoogleAgreedPrivacy(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--border)] accent-[var(--accent)]"
+                />
+                <span>
+                  I agree to the{" "}
+                  <Link href="/privacy" target="_blank" className="font-medium text-[var(--accent)] hover:underline">
+                    Privacy Policy
+                  </Link>
+                </span>
+              </label>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3 border-t border-[var(--border)] pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowGoogleConsent(false)}
+                disabled={googleLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={!googleAgreedTerms || !googleAgreedPrivacy || googleLoading}
+              >
+                {googleLoading ? "Connecting..." : "Continue with Google"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </form>
   );

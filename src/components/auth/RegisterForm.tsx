@@ -6,16 +6,29 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import Link from "next/link";
 
 export function RegisterForm() {
   const router = useRouter();
   const { showToast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+
+    if (!agreedToTerms) {
+      setError("You must agree to the Terms of Service to register.");
+      return;
+    }
+    if (!agreedToPrivacy) {
+      setError("You must agree to the Privacy Policy to register.");
+      return;
+    }
+
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
@@ -87,7 +100,44 @@ export function RegisterForm() {
         placeholder="••••••••"
         required
       />
-      <Button type="submit" className="w-full" disabled={loading}>
+
+      {/* Consent checkboxes */}
+      <div className="space-y-2.5 pt-2">
+        <label className="flex items-start gap-2.5 text-xs text-[var(--muted)] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--border)] accent-[var(--accent)]"
+          />
+          <span>
+            I agree to the{" "}
+            <Link href="/terms" target="_blank" className="font-medium text-[var(--accent)] hover:underline">
+              Terms of Service
+            </Link>
+          </span>
+        </label>
+        <label className="flex items-start gap-2.5 text-xs text-[var(--muted)] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={agreedToPrivacy}
+            onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-[var(--border)] accent-[var(--accent)]"
+          />
+          <span>
+            I agree to the{" "}
+            <Link href="/privacy" target="_blank" className="font-medium text-[var(--accent)] hover:underline">
+              Privacy Policy
+            </Link>
+          </span>
+        </label>
+      </div>
+
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={loading || !agreedToTerms || !agreedToPrivacy}
+      >
         {loading ? "Creating account..." : "Create account"}
       </Button>
     </form>

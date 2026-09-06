@@ -8,8 +8,9 @@ export default auth((req) => {
   const isLoginPage = pathname === "/login";
   const isForgotPasswordPage = pathname === "/forgot-password" || pathname === "/reset-password";
   const isPaymentPage = pathname.startsWith("/payment/");
+  const isLegalPage = pathname === "/privacy" || pathname === "/terms";
   const isApiRoute = pathname.startsWith("/api/") && !pathname.startsWith("/api/auth");
-  const isPublicPage = pathname === "/" || isLoginPage || isForgotPasswordPage || isPaymentPage || pathname.startsWith("/api/auth") || pathname.startsWith("/api/forgot-password") || pathname.startsWith("/api/reset-password");
+  const isPublicPage = pathname === "/" || isLoginPage || isForgotPasswordPage || isPaymentPage || isLegalPage || pathname.startsWith("/api/auth") || pathname.startsWith("/api/forgot-password") || pathname.startsWith("/api/reset-password");
 
   // API routes (other than auth) handle their own auth/401 — don't redirect
   // them to the login HTML page, which would break SSE/EventSource clients.
