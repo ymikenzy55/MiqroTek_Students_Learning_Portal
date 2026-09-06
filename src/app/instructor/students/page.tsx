@@ -28,6 +28,7 @@ export default async function InstructorStudentsPage() {
           name: true,
           email: true,
           phone: true,
+          status: true,
           createdAt: true,
         },
       },
@@ -51,6 +52,7 @@ export default async function InstructorStudentsPage() {
         name: e.user.name,
         email: e.user.email,
         phone: e.user.phone,
+        status: e.user.status,
         createdAt: e.user.createdAt,
         enrollments: [],
         submissionsCount: 0,
@@ -60,9 +62,56 @@ export default async function InstructorStudentsPage() {
     studentMap.get(e.user.id).enrollments.push({ course: e.course });
   }
 
+  // 3. If this is the super admin (yeboahmichael), also fetch ALL students
+  //    in the system, not just those enrolled in their courses.
+  const isSuperAdmin = session.user.role === "SUPER_ADMIN";
+  if (isSuperAdmin) {
+    const allStudents = await prisma.user.findMany({
+      where: { role: "STUDENT" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        status: true,
+        createdAt: true,
+        enrollments: {
+          select: {
+            course: { select: { id: true, title: true, duration: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    for (const s of allStudents) {
+      if (!studentMap.has(s.id)) {
+        studentMap.set(s.id, {
+          id: s.id,
+          name: s.name,
+          email: s.email,
+          phone: s.phone,
+          status: s.status,
+          createdAt: s.createdAt,
+          enrollments: s.enrollments.map((e) => ({ course: e.course })),
+          submissionsCount: 0,
+          attendanceCount: 0,
+        });
+      } else {
+        // Merge any additional enrollments
+        const existing = studentMap.get(s.id);
+        for (const e of s.enrollments) {
+          if (!existing.enrollments.some((en: any) => en.course.id === e.course.id)) {
+            existing.enrollments.push({ course: e.course });
+          }
+        }
+      }
+    }
+  }
+
   const studentIds = Array.from(studentMap.keys());
 
-  // 3. Count submissions and attendance records for these students
+  // 4. Count submissions and attendance records for these students
   if (studentIds.length > 0) {
     const [submissions, attendance] = await Promise.all([
       prisma.submission.groupBy({
@@ -92,5 +141,11 @@ export default async function InstructorStudentsPage() {
 
   const studentsList = Array.from(studentMap.values());
 
-  return <InstructorStudentsClient students={studentsList} courses={instructorCourses} />;
+  return (
+    <InstructorStudentsClient
+      students={studentsList}
+      courses={instructorCourses}
+      isSuperAdmin={isSuperAdmin}
+    />
+  );
 }

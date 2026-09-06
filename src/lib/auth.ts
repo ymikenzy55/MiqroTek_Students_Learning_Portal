@@ -71,6 +71,12 @@ export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
             return null;
           }
 
+          // Check if the account is suspended
+          if (user.status === "SUSPENDED") {
+            console.warn(`⚠️ Suspended account attempted login: ${email}`);
+            throw new CredentialsSignin("Your account has been suspended. Please contact support.");
+          }
+
           const isValid = await bcrypt.compare(password, user.passwordHash);
           if (!isValid) {
             console.warn(`⚠️ Invalid password for: ${email}`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import {
   createInstructorAction,
   removeInstructorAction,
+  promoteToInstructorAction,
+  demoteInstructorAction,
 } from "@/actions/instructor-management-actions";
 
 interface InstructorRecord {
@@ -21,17 +23,28 @@ interface InstructorRecord {
   _count: { courses: number };
 }
 
+interface PromotableStudent {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export function InstructorsClient({
   instructors,
   currentUserId,
+  promotableStudents = [],
 }: {
   instructors: InstructorRecord[];
   currentUserId?: string;
+  promotableStudents?: PromotableStudent[];
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<InstructorRecord | null>(null);
+  const [confirmDemote, setConfirmDemote] = useState<InstructorRecord | null>(null);
   const { showToast } = useToast();
 
   async function handleCreateInstructor(e: React.FormEvent<HTMLFormElement>) {
@@ -61,18 +74,53 @@ export function InstructorsClient({
     }
   }
 
+  async function handleDemote(instructor: InstructorRecord) {
+    setRemovingId(instructor.id);
+    const result = await demoteInstructorAction(instructor.id);
+    setRemovingId(null);
+    setConfirmDemote(null);
+    if (result.success) {
+      showToast(`${instructor.name} demoted to student.`, "success");
+    } else {
+      showToast(result.error, "error");
+    }
+  }
+
+  async function handlePromote(studentId: string) {
+    setPromotingId(studentId);
+    const result = await promoteToInstructorAction(studentId);
+    setPromotingId(null);
+    if (result.success) {
+      showToast("Student promoted to instructor!", "success");
+      setIsPromoteModalOpen(false);
+    } else {
+      showToast(result.error, "error");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)]">Instructors</h1>
           <p className="text-sm text-[var(--muted)]">
-            View all instructors, add new ones, or remove access.
+            View all instructors, add new ones, promote students, or remove access.
           </p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
-          <span>+ Add Instructor</span>
-        </Button>
+        <div className="flex gap-2">
+          {promotableStudents.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setIsPromoteModalOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <span>↑ Promote Student</span>
+            </Button>
+          )}
+          <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+            <span>+ Add Instructor</span>
+          </Button>
+        </div>
       </div>
 
       {instructors.length === 0 ? (
@@ -133,13 +181,22 @@ export function InstructorsClient({
                   📚 {instructor._count.courses} course{instructor._count.courses === 1 ? "" : "s"}
                 </span>
                 {instructor.id !== currentUserId && (
-                  <button
-                    onClick={() => setConfirmRemove(instructor)}
-                    disabled={removingId === instructor.id}
-                    className="text-xs font-medium text-rose-600 hover:underline dark:text-rose-400"
-                  >
-                    Remove
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setConfirmDemote(instructor)}
+                      disabled={removingId === instructor.id}
+                      className="text-xs font-medium text-amber-600 hover:underline"
+                    >
+                      Demote
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove(instructor)}
+                      disabled={removingId === instructor.id}
+                      className="text-xs font-medium text-rose-600 hover:underline dark:text-rose-400"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -209,6 +266,60 @@ export function InstructorsClient({
         </div>
       )}
 
+      {/* Promote student modal */}
+      {isPromoteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--white)] p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between border-b border-[var(--border)] pb-4">
+              <div>
+                <h3 className="text-xl font-semibold text-[var(--foreground)]">Promote Student</h3>
+                <p className="text-xs text-[var(--muted)]">
+                  Grant a student Super Admin (instructor) privileges.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsPromoteModalOpen(false)}
+                className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]"
+              >
+                ✕
+              </button>
+            </div>
+
+            {promotableStudents.length === 0 ? (
+              <p className="py-8 text-center text-sm text-[var(--muted)]">
+                No active students available to promote.
+              </p>
+            ) : (
+              <ul className="divide-y divide-[var(--border)]">
+                {promotableStudents.map((student) => (
+                  <li key={student.id} className="flex items-center justify-between py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[var(--foreground)]">
+                        {student.name}
+                      </p>
+                      <p className="truncate text-xs text-[var(--muted)]">{student.email}</p>
+                    </div>
+                    <button
+                      onClick={() => handlePromote(student.id)}
+                      disabled={promotingId === student.id}
+                      className="shrink-0 rounded-lg bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/20 disabled:opacity-50"
+                    >
+                      {promotingId === student.id ? "Promoting..." : "Promote"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="mt-4 flex justify-end border-t border-[var(--border)] pt-4">
+              <Button variant="outline" onClick={() => setIsPromoteModalOpen(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Remove confirmation */}
       {confirmRemove && (
         <div
@@ -234,6 +345,38 @@ export function InstructorsClient({
                 className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
               >
                 {removingId === confirmRemove.id ? "Removing..." : "Remove permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Demote confirmation */}
+      {confirmDemote && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          onClick={() => setConfirmDemote(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--white)] p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">Demote instructor?</h3>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              <strong>{confirmDemote.name}</strong> will lose instructor privileges and become a
+              student. Their existing courses will remain but they will no longer be able to
+              manage them. They can be promoted again later.
+            </p>
+            <div className="mt-5 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setConfirmDemote(null)}>
+                Cancel
+              </Button>
+              <button
+                onClick={() => handleDemote(confirmDemote)}
+                disabled={removingId === confirmDemote.id}
+                className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+              >
+                {removingId === confirmDemote.id ? "Demoting..." : "Demote to Student"}
               </button>
             </div>
           </div>

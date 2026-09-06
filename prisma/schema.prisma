@@ -20,6 +20,8 @@ model User {
   passwordHash    String
   role            Role     @default(STUDENT)
   image           String?
+  /// ACTIVE = can log in, SUSPENDED = blocked from logging in
+  status          String   @default("ACTIVE")
   notifyOnMessage Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

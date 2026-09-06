@@ -20,9 +20,24 @@ export default async function InstructorsPage() {
     orderBy: { createdAt: "asc" },
   });
 
+  // Fetch students that can be promoted to instructor
+  const promotableStudents = await prisma.user.findMany({
+    where: { role: "STUDENT", status: "ACTIVE" },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
   const currentUserId = session?.user?.id;
 
   return (
-    <InstructorsClient instructors={instructors} currentUserId={currentUserId} />
+    <InstructorsClient
+      instructors={instructors}
+      currentUserId={currentUserId}
+      promotableStudents={promotableStudents}
+    />
   );
 }

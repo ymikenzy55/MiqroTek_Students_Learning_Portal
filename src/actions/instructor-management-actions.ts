@@ -84,3 +84,90 @@ export async function removeInstructorAction(instructorId: string) {
     return { success: false as const, error: "Failed to remove instructor." };
   }
 }
+
+/**
+ * Promote a STUDENT to SUPER_ADMIN (instructor). Only existing SUPER_ADMIN
+ * users can do this. Creates an instructor profile if one doesn't exist.
+ */
+export async function promoteToInstructorAction(userId: string) {
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") {
+    return { success: false as const, error: "Unauthorized. Super Admin access required." };
+  }
+
+  if (userId === session.user.id) {
+    return { success: false as const, error: "You are already a Super Admin." };
+  }
+
+  try {
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { instructorProfile: true },
+    });
+
+    if (!target) {
+      return { success: false as const, error: "User not found." };
+    }
+
+    if (target.role === "SUPER_ADMIN") {
+      return { success: false as const, error: "User is already an instructor." };
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        role: "SUPER_ADMIN",
+        instructorProfile: target.instructorProfile
+          ? undefined
+          : { create: { title: "Instructor" } },
+      },
+    });
+
+    revalidatePath("/instructor/instructors");
+    revalidatePath("/instructor/students");
+    revalidatePath("/admin/instructors");
+
+    return { success: true as const };
+  } catch (error) {
+    console.error("Error promoting user:", error);
+    return { success: false as const, error: "Failed to promote user." };
+  }
+}
+
+/**
+ * Demote a SUPER_ADMIN back to STUDENT. Removes their instructor privileges.
+ * Cannot demote yourself.
+ */
+export async function demoteInstructorAction(instructorId: string) {
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") {
+    return { success: false as const, error: "Unauthorized. Super Admin access required." };
+  }
+
+  if (instructorId === session.user.id) {
+    return { success: false as const, error: "You cannot demote yourself." };
+  }
+
+  try {
+    const target = await prisma.user.findUnique({ where: { id: instructorId } });
+    if (!target || target.role !== "SUPER_ADMIN") {
+      return { success: false as const, error: "User not found or not an instructor." };
+    }
+
+    await prisma.user.update({
+      where: { id: instructorId },
+      data: { role: "STUDENT" },
+    });
+
+    revalidatePath("/instructor/instructors");
+    revalidatePath("/instructor/students");
+    revalidatePath("/admin/instructors");
+
+    return { success: true as const };
+  } catch (error) {
+    console.error("Error demoting instructor:", error);
+    return { success: false as const, error: "Failed to demote instructor." };
+  }
+}

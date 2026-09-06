@@ -145,3 +145,100 @@ export async function createAndEnrollStudentAction(formData: FormData) {
     return { success: false, error: error.message || "Failed to register student." };
   }
 }
+
+/**
+ * Suspend a student — sets status to SUSPENDED so they can't log in.
+ * Only instructors (SUPER_ADMIN) can do this, and only for students
+ * enrolled in their courses (or any student if they're the super admin
+ * who owns all courses).
+ */
+export async function suspendStudentAction(studentId: string) {
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") {
+    return { success: false as const, error: "Unauthorized. Instructor access required." };
+  }
+
+  try {
+    const student = await prisma.user.findUnique({ where: { id: studentId } });
+    if (!student) {
+      return { success: false as const, error: "Student not found." };
+    }
+    if (student.role !== "STUDENT") {
+      return { success: false as const, error: "Cannot suspend non-student accounts." };
+    }
+
+    await prisma.user.update({
+      where: { id: studentId },
+      data: { status: "SUSPENDED" },
+    });
+
+    revalidatePath("/instructor/students");
+    revalidatePath("/instructor");
+
+    return { success: true as const };
+  } catch (error) {
+    console.error("Error suspending student:", error);
+    return { success: false as const, error: "Failed to suspend student." };
+  }
+}
+
+/** Reactivate a suspended student. */
+export async function unsuspendStudentAction(studentId: string) {
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") {
+    return { success: false as const, error: "Unauthorized. Instructor access required." };
+  }
+
+  try {
+    const student = await prisma.user.findUnique({ where: { id: studentId } });
+    if (!student) {
+      return { success: false as const, error: "Student not found." };
+    }
+
+    await prisma.user.update({
+      where: { id: studentId },
+      data: { status: "ACTIVE" },
+    });
+
+    revalidatePath("/instructor/students");
+    revalidatePath("/instructor");
+
+    return { success: true as const };
+  } catch (error) {
+    console.error("Error unsuspending student:", error);
+    return { success: false as const, error: "Failed to reactivate student." };
+  }
+}
+
+/**
+ * Permanently delete a student and all their data (cascade).
+ */
+export async function deleteStudentAction(studentId: string) {
+  const session = await auth();
+
+  if (!session?.user || session.user.role !== "SUPER_ADMIN") {
+    return { success: false as const, error: "Unauthorized. Instructor access required." };
+  }
+
+  try {
+    const student = await prisma.user.findUnique({ where: { id: studentId } });
+    if (!student) {
+      return { success: false as const, error: "Student not found." };
+    }
+    if (student.role !== "STUDENT") {
+      return { success: false as const, error: "Cannot delete non-student accounts." };
+    }
+
+    await prisma.user.delete({ where: { id: studentId } });
+
+    revalidatePath("/instructor/students");
+    revalidatePath("/instructor");
+
+    return { success: true as const };
+  } catch (error) {
+    console.error("Error deleting student:", error);
+    return { success: false as const, error: "Failed to delete student." };
+  }
+}
