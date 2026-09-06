@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -38,9 +38,46 @@ export function ProfileSettings({ user, profile, basePath }: ProfileSettingsProp
   const [pwdSaving, startPwdSave] = useTransition();
   const [settingsSaving, startSettingsSave] = useTransition();
   const { showToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(user.image || profile?.avatarUrl || "");
 
   // Local state for settings toggle so it feels instant
   const [notifyOnMessage, setNotifyOnMessage] = useState(user.notifyOnMessage);
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Image must be less than 5 MB.", "error");
+      return;
+    }
+
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      showToast("Please upload a JPG, PNG, WebP, or GIF image.", "error");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || "Upload failed.", "error");
+        return;
+      }
+      const data = await res.json();
+      setAvatarUrl(data.url);
+      showToast("Image uploaded! Click Save Profile to apply.", "success");
+    } catch {
+      showToast("Failed to upload image.", "error");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function handleProfileSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -76,21 +113,38 @@ export function ProfileSettings({ user, profile, basePath }: ProfileSettingsProp
     });
   }
 
-  const avatarSrc = user.image || profile?.avatarUrl;
+  const avatarSrc = avatarUrl;
 
   return (
     <div className="space-y-6">
       {/* Header with avatar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[var(--accent)]/10 text-xl font-bold text-[var(--accent)]">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="group relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[var(--accent)]/10 text-xl font-bold text-[var(--accent)] transition-all hover:ring-2 hover:ring-[var(--accent)] disabled:opacity-50"
+            title="Click to upload a photo"
+          >
             {avatarSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatarSrc} alt={user.name} className="h-full w-full object-cover" />
             ) : (
               user.name.charAt(0).toUpperCase()
             )}
-          </div>
+            {/* Overlay on hover */}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-[10px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+              {uploading ? "..." : "Change"}
+            </span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handleAvatarUpload}
+            className="hidden"
+          />
           <div>
             <h1 className="text-2xl font-bold text-[var(--foreground)]">{user.name}</h1>
             <p className="text-sm text-[var(--muted)]">{user.email}</p>
@@ -121,12 +175,23 @@ export function ProfileSettings({ user, profile, basePath }: ProfileSettingsProp
             <Input label="Full Name" name="name" defaultValue={user.name} required />
             <Input label="Email" name="email" type="email" defaultValue={user.email} disabled />
             <Input label="Phone" name="phone" defaultValue={user.phone || ""} placeholder="+233..." />
-            <Input
-              label="Avatar URL"
-              name="avatarUrl"
-              defaultValue={profile?.avatarUrl || user.image || ""}
-              placeholder="https://..."
-            />
+            {/* Hidden field carries the uploaded avatar URL */}
+            <input type="hidden" name="avatarUrl" value={avatarUrl} />
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full"
+              >
+                {uploading
+                  ? "Uploading..."
+                  : avatarUrl
+                    ? "Change Profile Photo"
+                    : "Upload Profile Photo"}
+              </Button>
+            </div>
           </div>
 
           {!isStudent && (

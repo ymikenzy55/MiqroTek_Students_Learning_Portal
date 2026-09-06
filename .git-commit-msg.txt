@@ -1,17 +1,11 @@
-feat: add Brevo email for password reset and welcome, reseed with new credentials
+feat: clickable avatar upload in profile — no more URL input
 
-- Create src/lib/email.ts with Brevo SMTP API integration
-- Add sendPasswordResetEmail — sends branded HTML email with reset button
-- Add sendWelcomeEmail — sends branded welcome email after registration
-- Update forgot-password API to send real email via Brevo (no more dev reset URL)
-- Update forgot-password page to show "check your email" message
-- Update register API to send welcome email after successful registration
-- Add BREVO_API_KEY, BREVO_FROM_EMAIL, BREVO_FROM_NAME env vars
-- Update seed to remove demo student account
-- Seed now creates only the super admin instructor:
-  Email: yeboahmichael977@gmail.com
-  Password: !@Firatata45
-- Database reseeded — all old users removed
+- Replace Avatar URL text input with a clickable avatar in the profile header
+- Click the avatar (or the "Upload Profile Photo" button) to select a file
+- File is uploaded to /api/upload and the URL is stored in a hidden field
+- Shows "Change" overlay on hover and "Uploading..." while in progress
+- Validates file type (JPG/PNG/WebP/GIF) and size (5 MB max) client-side
+- Toast confirms upload, user clicks Save Profile to persist
 
 Generated with [Devin](https://devin.ai)
 
