@@ -35,7 +35,6 @@ async function main() {
 
   // Super Admin Instructor Credentials requested by user
   const instructorPasswordHash = await bcrypt.hash("!@Firatata45", 10);
-  const studentPasswordHash = await bcrypt.hash("password123", 10);
 
   // 1. Create Super Admin Instructor
   const superAdmin = await prisma.user.create({
@@ -61,25 +60,7 @@ async function main() {
 
   console.log(`✅ Super Admin created: ${superAdmin.email}`);
 
-  // 2. Create Sample Student registered under instructor
-  const student = await prisma.user.create({
-    data: {
-      name: "Kwame Mensah",
-      email: "student@miqrotek.com",
-      phone: "+233 55 123 4567",
-      passwordHash: studentPasswordHash,
-      role: "STUDENT",
-      studentProfile: {
-        create: {
-          bio: "Passionate web development student learning modern technologies.",
-        },
-      },
-    },
-  });
-
-  console.log(`✅ Demo Student created: ${student.email}`);
-
-  // 3. Create Courses with images, durations, prices, and weekly topics
+  // 2. Create Courses with images, durations, prices, and weekly topics
   const courseData = [
     {
       title: "Full-Stack Web Development Bootcamp",
@@ -165,32 +146,7 @@ async function main() {
 
   const primaryCourse = createdCourses[0];
 
-  // 4. Enroll student in primary course
-  const enrollment = await prisma.enrollment.create({
-    data: {
-      userId: student.id,
-      courseId: primaryCourse.id,
-      status: "ACTIVE",
-    },
-  });
-
-  // Create payment record for enrollment
-  await prisma.payment.create({
-    data: {
-      userId: student.id,
-      courseId: primaryCourse.id,
-      enrollmentId: enrollment.id,
-      amount: primaryCourse.price,
-      currency: "GHS",
-      reference: `PAY-SEED-${Date.now()}`,
-      status: "PAID",
-      paystackRef: `PS-${Date.now()}`,
-    },
-  });
-
-  console.log(`🎓 Enrolled student in "${primaryCourse.title}" with PAID status`);
-
-  // 5. Create Assessment / Assignment for the course
+  // 3. Create Assessment / Assignment for the course
   const assessment = await prisma.assessment.create({
     data: {
       courseId: primaryCourse.id,
@@ -212,39 +168,7 @@ async function main() {
     },
   });
 
-  // 6. Create Student Submission
-  const submission = await prisma.submission.create({
-    data: {
-      userId: student.id,
-      assessmentId: assessment.id,
-      status: "REVIEWED",
-      score: 92,
-      feedback: "Excellent work! Responsive breakpoints and semantic structure look clean.",
-      submittedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      reviewedAt: new Date(),
-    },
-  });
-
-  console.log(`📝 Created sample assignment and student submission (Score: ${submission.score}/100)`);
-
-  // 7. Create Attendance Session & Records
-  const attendanceSession = await prisma.attendanceSession.create({
-    data: {
-      courseId: primaryCourse.id,
-      instructorId: superAdmin.id,
-      date: new Date(),
-      records: {
-        create: [
-          {
-            userId: student.id,
-            status: "PRESENT",
-          },
-        ],
-      },
-    },
-  });
-
-  console.log(`📌 Created attendance session with student marked PRESENT`);
+  console.log(`📝 Created sample assignment for "${primaryCourse.title}"`);
 
   console.log("\n=======================================================");
   console.log("🎉 SEEDING COMPLETED SUCCESSFULLY!");
@@ -254,11 +178,9 @@ async function main() {
   console.log(`   Password: !@Firatata45`);
   console.log(`   Role:     SUPER_ADMIN`);
   console.log("-------------------------------------------------------");
-  console.log(`🎓 Demo Student Credentials:`);
-  console.log(`   Email:    student@miqrotek.com`);
-  console.log(`   Password: password123`);
-  console.log(`   Role:     STUDENT`);
-  console.log("=======================================================\n");
+  console.log(`📚 Courses created: ${createdCourses.length}`);
+  console.log(`📝 Assessments created: 1`);
+  console.log("=======================================================");
 }
 
 main()

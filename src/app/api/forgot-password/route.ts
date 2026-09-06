@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { sendPasswordResetEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -12,8 +13,12 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({ where: { email } });
 
+    // Always return success-like response to avoid leaking which emails exist
     if (!user) {
-      return NextResponse.json({ error: "No account found with that email address" }, { status: 404 });
+      return NextResponse.json({
+        success: true,
+        message: "If an account exists for that email, a reset link has been sent.",
+      });
     }
 
     // Invalidate any existing reset tokens
@@ -34,11 +39,20 @@ export async function POST(req: Request) {
       },
     });
 
-    // In production, send email with reset link
-    // For now, we return the token (dev only)
-    const resetUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/reset-password?token=${token}`;
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-    return NextResponse.json({ success: true, resetUrl });
+    // Send the reset email via Brevo
+    const sent = await sendPasswordResetEmail(user.email, user.name, resetUrl);
+
+    if (!sent) {
+      console.warn("⚠️ Password reset email failed to send, but token was created.");
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "If an account exists for that email, a reset link has been sent.",
+    });
   } catch {
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }

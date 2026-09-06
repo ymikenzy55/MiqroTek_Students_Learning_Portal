@@ -10,14 +10,12 @@ export default function ForgotPasswordPage() {
   const { showToast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [resetUrl, setResetUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setSuccess(null);
-    setResetUrl(null);
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
@@ -39,11 +37,11 @@ export default function ForgotPasswordPage() {
       return;
     }
 
-    setSuccess("Reset link generated! Check below to reset your password.");
-    showToast("Reset link generated successfully", "success");
-    if (data.resetUrl) {
-      setResetUrl(data.resetUrl);
-    }
+    setSuccess(
+      data.message ||
+        "If an account exists for that email, a reset link has been sent."
+    );
+    showToast("Reset link sent! Check your email.", "success");
   }
 
   return (
@@ -72,17 +70,6 @@ export default function ForgotPasswordPage() {
           {success && (
             <div className="mb-4 rounded-lg bg-[var(--success)]/10 border border-[var(--success)]/30 px-4 py-3 text-sm text-[var(--success)]">
               {success}
-              {resetUrl && (
-                <div className="mt-3">
-                  <p className="text-xs text-[var(--muted)] mb-1">Dev mode — reset link:</p>
-                  <Link
-                    href={resetUrl}
-                    className="text-sm text-[var(--accent)] hover:text-[var(--accent-dark)] underline break-all"
-                  >
-                    {resetUrl}
-                  </Link>
-                </div>
-              )}
             </div>
           )}
 
