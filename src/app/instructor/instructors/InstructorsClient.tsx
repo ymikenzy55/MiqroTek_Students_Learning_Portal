@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { useSearchAndPaginate } from "@/lib/useSearchAndPaginate";
+import { SearchBar, Pagination } from "@/components/ui/SearchAndPagination";
 import {
   createInstructorAction,
   removeInstructorAction,
@@ -46,6 +48,12 @@ export function InstructorsClient({
   const [confirmRemove, setConfirmRemove] = useState<InstructorRecord | null>(null);
   const [confirmDemote, setConfirmDemote] = useState<InstructorRecord | null>(null);
   const { showToast } = useToast();
+
+  const { query, setQuery, page, setPage, totalPages, totalItems, paginated, pageSize } =
+    useSearchAndPaginate(instructors, {
+      searchKeys: ["name", "email"],
+      pageSize: 6,
+    });
 
   async function handleCreateInstructor(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -123,16 +131,26 @@ export function InstructorsClient({
         </div>
       </div>
 
-      {instructors.length === 0 ? (
+      {/* Search bar */}
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="Search instructors by name or email..."
+      />
+
+      {paginated.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] p-12 text-center">
-          <h3 className="text-sm font-semibold text-[var(--foreground)]">No instructors yet</h3>
+          <h3 className="text-sm font-semibold text-[var(--foreground)]">
+            {query ? "No instructors match your search" : "No instructors yet"}
+          </h3>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Click &quot;+ Add Instructor&quot; to create the first instructor account.
+            {query ? "Try a different search term." : "Click \"+ Add Instructor\" to create the first instructor account."}
           </p>
         </div>
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {instructors.map((instructor) => (
+          {paginated.map((instructor) => (
             <div
               key={instructor.id}
               className="rounded-2xl border border-[var(--border)] bg-[var(--white)] p-5 shadow-xs"
@@ -202,6 +220,16 @@ export function InstructorsClient({
             </div>
           ))}
         </div>
+
+        {/* Pagination */}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+        />
+        </>
       )}
 
       {/* Add instructor modal */}

@@ -1,11 +1,15 @@
-feat: clickable avatar upload in profile — no more URL input
+feat: add search and pagination to all list pages
 
-- Replace Avatar URL text input with a clickable avatar in the profile header
-- Click the avatar (or the "Upload Profile Photo" button) to select a file
-- File is uploaded to /api/upload and the URL is stored in a hidden field
-- Shows "Change" overlay on hover and "Uploading..." while in progress
-- Validates file type (JPG/PNG/WebP/GIF) and size (5 MB max) client-side
-- Toast confirms upload, user clicks Save Profile to persist
+- Create reusable useSearchAndPaginate hook (client-side filter + paginate)
+- Create SearchBar and Pagination UI components
+- Instructor students: search by name/email/phone, 10 per page
+- Instructor courses: search by title/description/duration, 9 per page
+- Instructor instructors: search by name/email, 6 per page
+- Student courses: search by title/description/duration, 6 per page
+  (both "My Courses" and "Available Courses" sections)
+- Pagination shows "Showing X–Y of Z" and page numbers with ellipsis
+- Empty states adapt to show "No results match your search" when filtering
+- Page resets to 1 when search query changes
 
 Generated with [Devin](https://devin.ai)
 

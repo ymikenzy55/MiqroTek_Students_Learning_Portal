@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { useSearchAndPaginate } from "@/lib/useSearchAndPaginate";
+import { SearchBar, Pagination } from "@/components/ui/SearchAndPagination";
 import {
   createAndEnrollStudentAction,
   suspendStudentAction,
@@ -46,6 +48,12 @@ export function InstructorStudentsClient({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<StudentRecord | null>(null);
   const { showToast } = useToast();
+
+  const { query, setQuery, page, setPage, totalPages, totalItems, paginated, pageSize } =
+    useSearchAndPaginate(students, {
+      searchKeys: ["name", "email", "phone"],
+      pageSize: 10,
+    });
 
   async function handleRegisterStudent(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -113,6 +121,13 @@ export function InstructorStudentsClient({
         </Button>
       </div>
 
+      {/* Search bar */}
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="Search students by name, email, or phone..."
+      />
+
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--white)] shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -128,14 +143,14 @@ export function InstructorStudentsClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {students.length === 0 ? (
+              {paginated.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-[var(--muted)]">
-                    No students registered yet. Click &quot;+ Enroll New Student&quot; to add students.
+                    {query ? "No students match your search." : "No students registered yet. Click \"+ Enroll New Student\" to add students."}
                   </td>
                 </tr>
               ) : (
-                students.map((student) => {
+                paginated.map((student) => {
                   const isSuspended = student.status === "SUSPENDED";
                   return (
                     <tr
@@ -238,6 +253,15 @@ export function InstructorStudentsClient({
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        totalItems={totalItems}
+        pageSize={pageSize}
+      />
 
       {/* Modal to Register/Enroll Student */}
       {isModalOpen && (

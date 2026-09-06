@@ -8,6 +8,8 @@ import { EditCourseModal } from "@/components/courses/EditCourseModal";
 import { deleteCourseAction, toggleTopicCoveredAction } from "@/actions/course-actions";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import { useSearchAndPaginate } from "@/lib/useSearchAndPaginate";
+import { SearchBar, Pagination } from "@/components/ui/SearchAndPagination";
 
 interface WeeklyTopicData {
   id: string;
@@ -38,6 +40,12 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [, startToggle] = useTransition();
   const { showToast } = useToast();
+
+  const { query, setQuery, page, setPage, totalPages, totalItems, paginated, pageSize } =
+    useSearchAndPaginate(courses, {
+      searchKeys: ["title", "description", "duration"],
+      pageSize: 9,
+    });
 
   async function handleDelete(courseId: string, title: string) {
     if (!confirm(`Are you sure you want to delete course "${title}"?`)) return;
@@ -90,11 +98,22 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
         </Button>
       </div>
 
-      {courses.length === 0 ? (
-        <EmptyState title="No courses created yet" description="Click '+ Create Course' above to list your first course." />
+      {/* Search bar */}
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="Search courses by title, description, or duration..."
+      />
+
+      {paginated.length === 0 ? (
+        <EmptyState
+          title={query ? "No courses match your search" : "No courses created yet"}
+          description={query ? "Try a different search term." : "Click '+ Create Course' above to list your first course."}
+        />
       ) : (
+        <>
         <div className="stagger grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {courses.map((course) => (
+          {paginated.map((course) => (
             <div
               key={course.id}
               className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--white)] shadow-xs transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
@@ -183,6 +202,16 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
             </div>
           ))}
         </div>
+
+        {/* Pagination */}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+        />
+        </>
       )}
 
       <CourseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
