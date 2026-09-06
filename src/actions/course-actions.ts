@@ -23,6 +23,13 @@ export async function createCourseAction(formData: FormData) {
     .map((h) => h.trim())
     .filter((h) => h.length > 0);
 
+  // Pricing model
+  const pricingType = (formData.get("pricingType") as string) || "PAID";
+  const trialDays = parseInt(formData.get("trialDays") as string) || 30;
+  const registrationDeadlineStr = formData.get("registrationDeadline") as string;
+  const allowPartialPayment = formData.get("allowPartialPayment") === "on";
+  const minimumPayment = parseFloat(formData.get("minimumPayment") as string) || 0;
+
   if (!title) {
     return { success: false, error: "Course title is required." };
   }
@@ -32,6 +39,21 @@ export async function createCourseAction(formData: FormData) {
     .split("\n")
     .map((t) => t.trim())
     .filter((t) => t.length > 0);
+
+  // Validate pricing
+  if (pricingType === "FREE_TRIAL" && price <= 0) {
+    return { success: false, error: "When offering a free trial, you must set the regular price that will apply after the trial." };
+  }
+
+  if (allowPartialPayment && minimumPayment <= 0) {
+    return { success: false, error: "Minimum payment must be greater than 0 when partial payment is enabled." };
+  }
+
+  if (allowPartialPayment && minimumPayment > price) {
+    return { success: false, error: "Minimum payment cannot exceed the full course price." };
+  }
+
+  const registrationDeadline = registrationDeadlineStr ? new Date(registrationDeadlineStr) : null;
 
   try {
     const course = await prisma.course.create({
@@ -45,6 +67,13 @@ export async function createCourseAction(formData: FormData) {
         highlights,
         status: "ACTIVE",
         instructorId: session.user.id,
+        pricingType,
+        originalPrice: pricingType === "FREE_TRIAL" ? price : null,
+        trialDays: pricingType === "FREE_TRIAL" ? trialDays : 30,
+        trialStartAt: pricingType === "FREE_TRIAL" ? new Date() : null,
+        registrationDeadline,
+        allowPartialPayment,
+        minimumPayment: allowPartialPayment ? minimumPayment : null,
         weeklyTopics: {
           create: topicTitles.map((tTitle, idx) => ({
             weekNumber: idx + 1,
@@ -108,11 +137,32 @@ export async function updateCourseAction(courseId: string, formData: FormData) {
     .map((h) => h.trim())
     .filter((h) => h.length > 0);
 
+  // Pricing model
+  const pricingType = (formData.get("pricingType") as string) || "PAID";
+  const trialDays = parseInt(formData.get("trialDays") as string) || 30;
+  const registrationDeadlineStr = formData.get("registrationDeadline") as string;
+  const allowPartialPayment = formData.get("allowPartialPayment") === "on";
+  const minimumPayment = parseFloat(formData.get("minimumPayment") as string) || 0;
+
   // Verify ownership
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course || course.instructorId !== session.user.id) {
     return { success: false as const, error: "Course not found or you do not own it." };
   }
+
+  if (pricingType === "FREE_TRIAL" && price <= 0) {
+    return { success: false as const, error: "When offering a free trial, you must set the regular price that will apply after the trial." };
+  }
+
+  if (allowPartialPayment && minimumPayment <= 0) {
+    return { success: false as const, error: "Minimum payment must be greater than 0 when partial payment is enabled." };
+  }
+
+  if (allowPartialPayment && minimumPayment > price) {
+    return { success: false as const, error: "Minimum payment cannot exceed the full course price." };
+  }
+
+  const registrationDeadline = registrationDeadlineStr ? new Date(registrationDeadlineStr) : null;
 
   try {
     await prisma.course.update({
@@ -124,8 +174,23 @@ export async function updateCourseAction(courseId: string, formData: FormData) {
         duration,
         image: image || null,
         highlights,
+        pricingType,
+        originalPrice: pricingType === "FREE_TRIAL" ? price : null,
+        trialDays: pricingType === "FREE_TRIAL" ? trialDays : course.trialDays,
+        trialStartAt: pricingType === "FREE_TRIAL" ? (course.trialStartAt || new Date()) : null,
+        registrationDeadline,
+        allowPartialPayment,
+        minimumPayment: allowPartialPayment ? minimumPayment : null,
       },
     });
+
+    // If the instructor changed from FREE_TRIAL to PAID, expire all active trials
+    if (course.pricingType === "FREE_TRIAL" && pricingType === "PAID") {
+      await prisma.enrollment.updateMany({
+        where: { courseId, isTrial: true, status: "ACTIVE" },
+        data: { isTrial: false, trialEndsAt: new Date(), status: "PAYMENT_REQUIRED" },
+      });
+    }
 
     revalidatePath("/instructor/courses");
     revalidatePath(`/student/courses/${courseId}`);

@@ -11,6 +11,10 @@ interface CourseCardProps {
   image?: string | null;
   topicCount?: number;
   enrolled?: boolean;
+  pricingType?: string;
+  trialDays?: number;
+  allowPartialPayment?: boolean;
+  minimumPayment?: number | null;
   action?: React.ReactNode;
 }
 
@@ -25,9 +29,15 @@ export function CourseCard({
   image,
   topicCount,
   enrolled = false,
+  pricingType = "PAID",
+  trialDays = 30,
+  allowPartialPayment = false,
+  minimumPayment,
   action,
 }: CourseCardProps) {
   const defaultImg = "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80";
+  const isFreeTrial = pricingType === "FREE_TRIAL";
+  const isFree = price === 0 && !isFreeTrial;
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--white)] shadow-xs transition-all duration-300 hover:shadow-md hover:-translate-y-1">
@@ -43,6 +53,11 @@ export function CourseCard({
         {enrolled && (
           <div className="absolute top-3 right-3">
             <Badge variant="success">Enrolled</Badge>
+          </div>
+        )}
+        {isFreeTrial && !enrolled && (
+          <div className="absolute top-3 right-3 rounded-full bg-emerald-500 px-2.5 py-1 text-xs font-bold text-white shadow-lg">
+            FREE {trialDays}d
           </div>
         )}
         {duration && (
@@ -71,9 +86,29 @@ export function CourseCard({
             <span className="truncate text-xs font-medium text-[var(--muted)]">{instructorName}</span>
           </div>
           <div className="text-right">
-            <span className="text-sm font-bold text-[var(--accent)]">
-              {price > 0 ? `${currency} ${price.toFixed(2)}` : "Free"}
-            </span>
+            {isFreeTrial ? (
+              <div className="flex flex-col items-end">
+                <span className="text-sm font-bold text-emerald-600">
+                  Free {trialDays} days
+                </span>
+                <span className="text-xs text-[var(--muted)] line-through">
+                  {currency} {price.toFixed(2)}
+                </span>
+              </div>
+            ) : isFree ? (
+              <span className="text-sm font-bold text-emerald-600">Free</span>
+            ) : (
+              <div className="flex flex-col items-end">
+                <span className="text-sm font-bold text-[var(--accent)]">
+                  {currency} {price.toFixed(2)}
+                </span>
+                {allowPartialPayment && minimumPayment && (
+                  <span className="text-[10px] text-[var(--muted)]">
+                    or pay {currency} {minimumPayment.toFixed(0)}+
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

@@ -36,6 +36,11 @@ interface CourseData {
   instructor: { name: string };
   _count: { weeklyTopics: number; enrollments: number };
   weeklyTopics: WeeklyTopicData[];
+  pricingType: string;
+  trialDays: number;
+  registrationDeadline: string | null;
+  allowPartialPayment: boolean;
+  minimumPayment: number | null;
 }
 
 export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) {
@@ -219,9 +224,20 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
                 {/* Stats row */}
                 <div className="mt-3 flex items-center gap-3 text-[11px] text-[var(--muted)]">
                   <span>📚 {course._count.weeklyTopics} topics</span>
-                  <span className="font-bold text-[var(--accent)]">
-                    {course.price > 0 ? `${course.currency} ${course.price.toFixed(0)}` : "Free"}
-                  </span>
+                  {course.pricingType === "FREE_TRIAL" ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-emerald-600">Free {course.trialDays}d</span>
+                      <span className="text-[var(--muted)] line-through">
+                        {course.currency} {course.price.toFixed(0)}
+                      </span>
+                    </div>
+                  ) : course.price === 0 ? (
+                    <span className="font-bold text-emerald-600">Free</span>
+                  ) : (
+                    <span className="font-bold text-[var(--accent)]">
+                      {course.currency} {course.price.toFixed(0)}
+                    </span>
+                  )}
                 </div>
 
                 {/* Action buttons */}

@@ -21,5 +21,11 @@ export default async function InstructorCoursesPage() {
       })
     : [];
 
-  return <InstructorCoursesClient courses={courses} />;
+  // Serialize dates for the client component
+  const serializedCourses = courses.map((c) => ({
+    ...c,
+    registrationDeadline: c.registrationDeadline?.toISOString() || null,
+  }));
+
+  return <InstructorCoursesClient courses={serializedCourses} />;
 }

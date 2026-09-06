@@ -51,6 +51,55 @@ export async function initiateMoolrePaymentAction(courseId: string) {
       return { success: true as const, free: true as const };
     }
 
+    // FREE TRIAL course — enroll with a trial that expires
+    if (course.pricingType === "FREE_TRIAL") {
+      // Check if registration deadline has passed
+      if (course.registrationDeadline && new Date() > course.registrationDeadline) {
+        return {
+          success: false as const,
+          error: "The registration deadline for this course has passed.",
+        };
+      }
+
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + course.trialDays);
+
+      await prisma.enrollment.upsert({
+        where: { userId_courseId: { userId, courseId } },
+        update: { status: "ACTIVE", isTrial: true, trialEndsAt },
+        create: {
+          userId,
+          courseId,
+          status: "ACTIVE",
+          isTrial: true,
+          trialEndsAt,
+        },
+      });
+
+      // Notify the instructor
+      createNotification({
+        userId: course.instructorId,
+        type: "enrollment",
+        title: "New Free Trial Enrollment",
+        body: `${session.user.name} just started a ${course.trialDays}-day free trial for "${course.title}".`,
+        href: "/instructor/students",
+      }).catch((err) => console.error("Failed to create notification:", err));
+
+      revalidatePath(`/student/courses/${courseId}`);
+      revalidatePath("/student/courses");
+      revalidatePath("/student");
+
+      return { success: true as const, freeTrial: true as const, trialEndsAt: trialEndsAt.toISOString() };
+    }
+
+    // Check registration deadline for paid courses
+    if (course.registrationDeadline && new Date() > course.registrationDeadline) {
+      return {
+        success: false as const,
+        error: "The registration deadline for this course has passed.",
+      };
+    }
+
     // Create or update enrollment as PENDING
     const enrollment = await prisma.enrollment.upsert({
       where: { userId_courseId: { userId, courseId } },

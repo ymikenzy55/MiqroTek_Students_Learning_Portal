@@ -23,7 +23,7 @@ const PRESET_IMAGES = [
 
 const STEPS = [
   { num: 1, label: "Basics" },
-  { num: 2, label: "Details" },
+  { num: 2, label: "Pricing" },
   { num: 3, label: "Cover" },
   { num: 4, label: "Highlights" },
   { num: 5, label: "Topics" },
@@ -46,6 +46,13 @@ export function CourseModal({ isOpen, onClose }: CourseModalProps) {
   const [topics, setTopics] = useState("");
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
 
+  // Pricing model state
+  const [pricingType, setPricingType] = useState<"PAID" | "FREE_TRIAL">("PAID");
+  const [trialDays, setTrialDays] = useState("30");
+  const [registrationDeadline, setRegistrationDeadline] = useState("");
+  const [allowPartialPayment, setAllowPartialPayment] = useState(false);
+  const [minimumPayment, setMinimumPayment] = useState("");
+
   if (!isOpen) return null;
 
   function reset() {
@@ -58,6 +65,11 @@ export function CourseModal({ isOpen, onClose }: CourseModalProps) {
     setHighlights("Hands-on real-world projects\nCertificate of completion\nLifetime access to materials\nCommunity Discord support");
     setTopics("");
     setCreatedCourseId(null);
+    setPricingType("PAID");
+    setTrialDays("30");
+    setRegistrationDeadline("");
+    setAllowPartialPayment(false);
+    setMinimumPayment("");
   }
 
   function handleClose() {
@@ -67,6 +79,10 @@ export function CourseModal({ isOpen, onClose }: CourseModalProps) {
 
   function canProceed(): boolean {
     if (step === 1) return title.trim().length > 0;
+    if (step === 2) {
+      if (pricingType === "FREE_TRIAL") return parseFloat(price) > 0;
+      return true;
+    }
     return true;
   }
 
@@ -81,6 +97,11 @@ export function CourseModal({ isOpen, onClose }: CourseModalProps) {
     formData.set("image", selectedImage);
     formData.set("highlights", highlights);
     formData.set("topics", topics);
+    formData.set("pricingType", pricingType);
+    formData.set("trialDays", trialDays);
+    formData.set("registrationDeadline", registrationDeadline);
+    if (allowPartialPayment) formData.set("allowPartialPayment", "on");
+    formData.set("minimumPayment", minimumPayment);
 
     const result = await createCourseAction(formData);
     setLoading(false);
@@ -176,35 +197,141 @@ export function CourseModal({ isOpen, onClose }: CourseModalProps) {
                 className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-sm focus:border-[var(--accent)] focus:outline-none"
               />
             </div>
+            <Input
+              label="Duration"
+              name="duration"
+              placeholder="e.g. 10 Weeks"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              required
+            />
           </div>
         )}
 
-        {/* Step 2: Details */}
+        {/* Step 2: Pricing */}
         {step === 2 && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-5">
+            {/* Pricing type selector */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
+                Pricing Model
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPricingType("PAID")}
+                  className={cn(
+                    "rounded-xl border-2 p-4 text-left transition-all",
+                    pricingType === "PAID"
+                      ? "border-[var(--accent)] bg-[var(--accent)]/5"
+                      : "border-[var(--border)] hover:border-[var(--accent)]/50"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-full border-2",
+                      pricingType === "PAID" ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--border)]"
+                    )}>
+                      {pricingType === "PAID" && <span className="text-[10px] text-white">✓</span>}
+                    </div>
+                    <span className="text-sm font-semibold text-[var(--foreground)]">Paid Course</span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[var(--muted)]">Students pay the full price to enroll.</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPricingType("FREE_TRIAL")}
+                  className={cn(
+                    "rounded-xl border-2 p-4 text-left transition-all",
+                    pricingType === "FREE_TRIAL"
+                      ? "border-[var(--accent)] bg-[var(--accent)]/5"
+                      : "border-[var(--border)] hover:border-[var(--accent)]/50"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-full border-2",
+                      pricingType === "FREE_TRIAL" ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--border)]"
+                    )}>
+                      {pricingType === "FREE_TRIAL" && <span className="text-[10px] text-white">✓</span>}
+                    </div>
+                    <span className="text-sm font-semibold text-[var(--foreground)]">Free for 1 Month</span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[var(--muted)]">Students get free access for a limited time, then pay.</p>
+                </button>
+              </div>
+            </div>
+
+            {/* Price input */}
+            <Input
+              label={pricingType === "FREE_TRIAL" ? "Regular Price (after trial)" : "Price (GHS)"}
+              name="price"
+              type="number"
+              step="0.01"
+              placeholder="450"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              required
+            />
+            {pricingType === "FREE_TRIAL" && (
+              <p className="text-xs text-[var(--muted)]">
+                Students will see the price with a strikethrough and a &quot;Free for X days&quot; badge.
+                After the trial, they&apos;ll need to pay this amount to continue.
+              </p>
+            )}
+
+            {/* Trial days (only for FREE_TRIAL) */}
+            {pricingType === "FREE_TRIAL" && (
               <Input
-                label="Duration"
-                name="duration"
-                placeholder="e.g. 10 Weeks"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
+                label="Trial Duration (days)"
+                name="trialDays"
+                type="number"
+                placeholder="30"
+                value={trialDays}
+                onChange={(e) => setTrialDays(e.target.value)}
                 required
               />
+            )}
+
+            {/* Registration deadline */}
+            <Input
+              label="Registration Deadline (optional)"
+              name="registrationDeadline"
+              type="date"
+              value={registrationDeadline}
+              onChange={(e) => setRegistrationDeadline(e.target.value)}
+            />
+            <p className="-mt-3 text-xs text-[var(--muted)]">
+              Students cannot register after this date. Leave empty for no deadline.
+            </p>
+
+            {/* Partial payment */}
+            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[var(--border)] p-4">
+              <input
+                type="checkbox"
+                checked={allowPartialPayment}
+                onChange={(e) => setAllowPartialPayment(e.target.checked)}
+                className="h-5 w-5 rounded border-[var(--border)] accent-[var(--accent)]"
+              />
+              <div>
+                <p className="text-sm font-medium text-[var(--foreground)]">Allow partial payment</p>
+                <p className="text-xs text-[var(--muted)]">Let students pay a minimum amount to get access.</p>
+              </div>
+            </label>
+
+            {allowPartialPayment && (
               <Input
-                label="Price (GHS)"
-                name="price"
+                label="Minimum Payment (GHS)"
+                name="minimumPayment"
                 type="number"
                 step="0.01"
-                placeholder="450"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                placeholder="225"
+                value={minimumPayment}
+                onChange={(e) => setMinimumPayment(e.target.value)}
                 required
               />
-            </div>
-            <p className="text-xs text-[var(--muted)]">
-              Set the price to 0 for a free course. Students will be enrolled instantly without payment.
-            </p>
+            )}
           </div>
         )}
 
@@ -274,7 +401,9 @@ export function CourseModal({ isOpen, onClose }: CourseModalProps) {
             </div>
             <h3 className="text-lg font-semibold text-[var(--foreground)]">Course Published!</h3>
             <p className="mt-2 max-w-sm text-sm text-[var(--muted)]">
-              Your course is now live and visible to students. You can add or manage weekly topics anytime from the course card.
+              {pricingType === "FREE_TRIAL"
+                ? `Your course is live with a ${trialDays}-day free trial. Students can enroll for free and will need to pay GHS ${price} after the trial.`
+                : "Your course is now live and visible to students. You can add or manage weekly topics anytime from the course card."}
             </p>
             <Button onClick={handleClose} className="mt-6">
               Done

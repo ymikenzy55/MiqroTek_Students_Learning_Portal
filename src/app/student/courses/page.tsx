@@ -36,6 +36,11 @@ export default async function StudentCourses() {
     image: c.image,
     instructor: { name: c.instructor.name },
     _count: { weeklyTopics: c._count.weeklyTopics },
+    pricingType: c.pricingType,
+    trialDays: c.trialDays,
+    registrationDeadline: c.registrationDeadline?.toISOString() || null,
+    allowPartialPayment: c.allowPartialPayment,
+    minimumPayment: c.minimumPayment,
   }));
 
   const serializedEnrollments = enrollments.map((e) => ({

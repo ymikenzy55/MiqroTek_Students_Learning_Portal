@@ -112,6 +112,21 @@ model Course {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  /// Pricing model: "PAID" (standard price) or "FREE_TRIAL" (free for a limited time)
+  pricingType  String   @default("PAID")
+  /// Original price shown with strikethrough when FREE_TRIAL is active
+  originalPrice Float?
+  /// Number of days the free trial lasts (default 30)
+  trialDays    Int      @default(30)
+  /// When the free trial starts for all new enrollments (null = starts at enrollment)
+  trialStartAt DateTime?
+  /// Deadline for students to register/enroll (null = no deadline)
+  registrationDeadline DateTime?
+  /// Allow students to pay a partial amount and still get access
+  allowPartialPayment Boolean @default(false)
+  /// Minimum amount required if partial payment is allowed
+  minimumPayment Float?
+
   weeklyTopics  WeeklyTopic[]
   resources     Resource[]
   assessments   Assessment[]
@@ -122,6 +137,7 @@ model Course {
   @@index([status])
   @@index([instructorId, status])
   @@index([createdAt])
+  @@index([pricingType])
   @@map("courses")
 }
 
@@ -211,6 +227,13 @@ model Enrollment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Trial-specific fields: when the free trial expires for this enrollment
+  trialEndsAt DateTime?
+  /// Whether this enrollment is currently in a free trial period
+  isTrial     Boolean  @default(false)
+  /// Amount paid (for partial payments — may be less than course price)
+  amountPaid  Float    @default(0)
+
   payment   Payment?
 
   @@unique([userId, courseId])
@@ -218,6 +241,7 @@ model Enrollment {
   @@index([courseId])
   @@index([userId, status])
   @@index([courseId, status])
+  @@index([trialEndsAt])
   @@map("enrollments")
 }
 

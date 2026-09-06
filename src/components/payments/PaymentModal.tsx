@@ -39,8 +39,21 @@ export function PaymentModal({
         onClose();
         return;
       }
+      if (result.freeTrial) {
+        showToast(
+          `You've started a free trial for ${courseTitle}! Enjoy ${result.trialEndsAt ? "your trial period" : "access"}.`,
+          "success"
+        );
+        onClose();
+        window.location.reload();
+        return;
+      }
       // Redirect to Moolre hosted checkout
-      window.location.href = result.authorizationUrl;
+      if (result.authorizationUrl) {
+        window.location.href = result.authorizationUrl;
+      } else {
+        showToast("Could not start payment. Please try again.", "error");
+      }
     } else {
       showToast(result.error || "Could not start payment. Please try again.", "error");
     }

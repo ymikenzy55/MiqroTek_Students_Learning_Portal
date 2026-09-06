@@ -17,6 +17,11 @@ interface CourseData {
   image: string | null;
   instructor: { name: string };
   _count: { weeklyTopics: number };
+  pricingType: string;
+  trialDays: number;
+  registrationDeadline: string | null;
+  allowPartialPayment: boolean;
+  minimumPayment: number | null;
 }
 
 interface EnrollmentData {
@@ -134,6 +139,10 @@ function CourseListWithSearch({
                   image={course.image}
                   topicCount={course._count.weeklyTopics}
                   enrolled={enrolled}
+                  pricingType={course.pricingType}
+                  trialDays={course.trialDays}
+                  allowPartialPayment={course.allowPartialPayment}
+                  minimumPayment={course.minimumPayment}
                   action={
                     enrolled ? (
                       <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
@@ -159,7 +168,11 @@ function CourseListWithSearch({
                           href={`/student/courses/${course.id}`}
                           className="inline-flex items-center gap-1 rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[var(--accent-dark)] transition-colors"
                         >
-                          View Details & Enroll →
+                          {course.pricingType === "FREE_TRIAL"
+                            ? `Start Free ${course.trialDays}-Day Trial →`
+                            : course.price === 0
+                              ? "Enroll for Free →"
+                              : "View Details & Enroll →"}
                         </Link>
                       </div>
                     )
