@@ -18,18 +18,22 @@ export default async function StudentDetailPage({
     notFound();
   }
 
-  // Only load the student if they are enrolled in at least one of this
-  // instructor's courses — prevents id-based enumeration.
-  const enrollment = await prisma.enrollment.findFirst({
-    where: {
-      userId: studentId,
-      course: { instructorId },
-    },
-    select: { id: true },
-  });
+  const isSuperAdmin = session.user.role === "SUPER_ADMIN";
 
-  if (!enrollment) {
-    notFound();
+  // Regular instructors can only see students enrolled in their courses.
+  // Super admins can view any student in the system.
+  if (!isSuperAdmin) {
+    const enrollment = await prisma.enrollment.findFirst({
+      where: {
+        userId: studentId,
+        course: { instructorId },
+      },
+      select: { id: true },
+    });
+
+    if (!enrollment) {
+      notFound();
+    }
   }
 
   const student = await prisma.user.findUnique({
@@ -43,7 +47,7 @@ export default async function StudentDetailPage({
       createdAt: true,
       studentProfile: { select: { bio: true, avatarUrl: true } },
       enrollments: {
-        where: { course: { instructorId } },
+        where: isSuperAdmin ? undefined : { course: { instructorId } },
         include: {
           course: {
             select: {
@@ -58,7 +62,7 @@ export default async function StudentDetailPage({
         },
       },
       submissions: {
-        where: { assessment: { course: { instructorId } } },
+        where: isSuperAdmin ? undefined : { assessment: { course: { instructorId } } },
         include: {
           assessment: {
             select: { id: true, title: true, course: { select: { title: true } } },
@@ -68,7 +72,7 @@ export default async function StudentDetailPage({
         take: 20,
       },
       attendanceRecords: {
-        where: { session: { course: { instructorId } } },
+        where: isSuperAdmin ? undefined : { session: { course: { instructorId } } },
         include: {
           session: {
             select: { id: true, date: true, course: { select: { title: true } } },
