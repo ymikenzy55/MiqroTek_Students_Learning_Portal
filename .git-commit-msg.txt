@@ -1,16 +1,12 @@
-feat: add privacy policy, terms of service, and consent checkboxes
+refactor: remove Google OAuth, keep terms/privacy on registration only
 
-- Create /privacy page with full privacy policy covering data collection,
-  payment processing (Moolre), Google OAuth, messaging, and user rights
-- Create /terms page with terms of service covering eligibility, accounts,
-  payments, acceptable use, attendance, IP, and termination
-- Add consent checkboxes to RegisterForm (must agree to both before
-  registering)
-- Add consent modal before Google OAuth redirect (must agree to both
-  before continuing to Google)
-- Add /privacy and /terms as public routes in proxy
-- Remove temporary OAuth debug endpoint
+- Remove Google provider from auth config and signIn callback
+- Remove Google sign-in button and consent modal from LoginForm
+- Remove Google OAuth env vars from .env.local and .env.example
+- Keep Terms of Service and Privacy Policy pages (/privacy, /terms)
+- Keep consent checkboxes on RegisterForm (registration only, not sign-in)
+- Remove Suspense wrapper from login page (no longer needed)
 
 Generated with [Devin](https://devin.ai)
 
-Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

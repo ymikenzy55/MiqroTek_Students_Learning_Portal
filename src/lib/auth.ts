@@ -1,6 +1,5 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { PORTAL_ROLES, type Portal, type Role } from "@/types";
@@ -44,18 +43,6 @@ export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
     },
   },
   providers: [
-    Google({
-      // Students sign in with Google. Instructors must use credentials.
-      // The signIn callback below enforces that only STUDENT accounts are
-      // created/allowed through Google.
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
-        },
-      },
-    }),
     Credentials({
       name: "credentials",
       credentials: {
@@ -116,66 +103,6 @@ export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
-      // Only handle Google provider specially — credentials provider already
-      // does its own validation in authorize().
-      if (account?.provider !== "google") return true;
-
-      if (!user?.email) {
-        console.warn("⚠️ Google sign-in: no email returned");
-        return false;
-      }
-
-      // Check if the user already exists
-      const existing = await prisma.user.findUnique({
-        where: { email: user.email },
-        select: { id: true, role: true, name: true, image: true },
-      });
-
-      if (existing) {
-        // Google sign-in is for students only. If the existing account is a
-        // SUPER_ADMIN (instructor), reject — they must use credentials.
-        if (existing.role === "SUPER_ADMIN") {
-          console.warn(`⚠️ Google sign-in rejected for staff account: ${user.email}`);
-          // Redirect to login with an error the login page can display
-          return `/login?error=staff_google_blocked`;
-        }
-
-        // Update the avatar from Google if we don't have one
-        if (!existing.image && user.image) {
-          await prisma.user.update({
-            where: { id: existing.id },
-            data: { image: user.image },
-          });
-        }
-
-        return true;
-      }
-
-      // New Google user — auto-create a student account
-      console.log(`📝 Auto-creating student account for Google user: ${user.email}`);
-      try {
-        await prisma.user.create({
-          data: {
-            email: user.email,
-            name: user.name || user.email.split("@")[0],
-            image: user.image,
-            // Google users don't use a password — set a random hash so the
-            // credentials provider can't be used without setting one.
-            passwordHash: await bcrypt.hash(
-              `google-oauth-${Date.now()}-${Math.random()}`,
-              10
-            ),
-            role: "STUDENT",
-            studentProfile: { create: {} },
-          },
-        });
-        return true;
-      } catch (error) {
-        console.error("❌ Failed to create Google student account:", error);
-        return false;
-      }
-    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { RegisterForm } from "@/components/auth/RegisterForm";
@@ -117,9 +117,7 @@ export default function LoginPage() {
                   <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
                     Sign in to your student account
                   </p>
-                  <Suspense fallback={<div className="h-10 animate-pulse rounded-lg bg-[var(--surface)]" />}>
-                    <LoginForm key="student-login" portal="student" />
-                  </Suspense>
+                  <LoginForm key="student-login" portal="student" />
                   <div className="mt-5 flex flex-col gap-2 text-sm">
                     <Link
                       href="/forgot-password"
@@ -166,9 +164,7 @@ export default function LoginPage() {
                 <p className="mb-6 mt-1 text-sm text-[var(--muted)]">
                   For instructors and administrators
                 </p>
-                <Suspense fallback={<div className="h-10 animate-pulse rounded-lg bg-[var(--surface)]" />}>
-                  <LoginForm key="staff-login" portal="staff" />
-                </Suspense>
+                <LoginForm key="staff-login" portal="staff" />
                 <div className="mt-5 flex flex-col gap-2 text-sm">
                   <Link
                     href="/forgot-password"
