@@ -91,9 +91,11 @@ export function CourseCard({
                 <span className="text-sm font-bold text-emerald-600">
                   Free {trialDays} days
                 </span>
-                <span className="text-xs text-[var(--muted)] line-through">
-                  {currency} {price.toFixed(2)}
-                </span>
+                {price > 0 && (
+                  <span className="text-xs text-[var(--muted)] line-through">
+                    {currency} {price.toFixed(2)}
+                  </span>
+                )}
               </div>
             ) : isFree ? (
               <span className="text-sm font-bold text-emerald-600">Free</span>

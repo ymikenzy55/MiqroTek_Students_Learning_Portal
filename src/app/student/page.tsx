@@ -15,7 +15,7 @@ export default async function StudentDashboard() {
   }
 
   // Optimized: Single parallel fetch instead of sequential queries
-  const [enrollments, pendingAssessments, attendanceCount, bundleCount] = await Promise.all([
+  const [enrollments, pendingAssessments, attendanceCount, bundleCount, allCourses] = await Promise.all([
     prisma.enrollment.findMany({
       where: { userId },
       include: {
@@ -27,6 +27,7 @@ export default async function StudentDashboard() {
             price: true,
             currency: true,
             duration: true,
+            image: true,
             instructor: { select: { name: true } },
             _count: { select: { weeklyTopics: true, assessments: true } },
           },
@@ -47,8 +48,31 @@ export default async function StudentDashboard() {
     prisma.bundleAssignment.count({ 
       where: { userId } 
     }),
+    // Fetch all active courses so we can show available ones too
+    prisma.course.findMany({
+      where: { status: "ACTIVE" },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        price: true,
+        currency: true,
+        duration: true,
+        image: true,
+        pricingType: true,
+        trialDays: true,
+        instructor: { select: { name: true } },
+        _count: { select: { weeklyTopics: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
+
   const totalTopics = enrollments.reduce((sum, e) => sum + e.course._count.weeklyTopics, 0);
+
+  // Determine which courses the student is NOT enrolled in
+  const enrolledCourseIds = new Set(enrollments.map((e) => e.course.id));
+  const availableCourses = allCourses.filter((c) => !enrolledCourseIds.has(c.id));
 
   return (
     <div className="space-y-8">
@@ -66,31 +90,84 @@ export default async function StudentDashboard() {
         <StatCard label="Active Bundles" value={bundleCount} />
       </div>
 
+      {/* My Courses (enrolled) */}
       <section>
         <h2 className="mb-4 text-lg font-semibold text-[var(--foreground)]">My Courses</h2>
         {enrollments.length === 0 ? (
           <EmptyState
             title="No courses yet"
-            description="Browse available courses and enroll to get started."
+            description="Browse available courses below and register to get started."
           />
         ) : (
           <div className="stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {enrollments.map(({ course }) => (
               <CourseCard
                 key={course.id}
+                id={course.id}
                 title={course.title}
                 description={course.description}
                 instructorName={course.instructor.name}
                 price={course.price}
                 currency={course.currency}
                 duration={course.duration}
+                image={course.image}
                 topicCount={course._count.weeklyTopics}
                 enrolled
+                action={
+                  <div className="border-t border-[var(--border)] pt-3 text-right">
+                    <a
+                      href={`/student/courses/${course.id}`}
+                      className="inline-flex items-center gap-1 rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[var(--accent-dark)] transition-colors"
+                    >
+                      View Topics & Progress →
+                    </a>
+                  </div>
+                }
               />
             ))}
           </div>
         )}
       </section>
+
+      {/* Available Courses (not yet enrolled) */}
+      {availableCourses.length > 0 && (
+        <section>
+          <h2 className="mb-4 text-lg font-semibold text-[var(--foreground)]">
+            Available Courses
+            <span className="ml-2 text-sm font-normal text-[var(--muted)]">
+              ({availableCourses.length})
+            </span>
+          </h2>
+          <div className="stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {availableCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                id={course.id}
+                title={course.title}
+                description={course.description}
+                instructorName={course.instructor.name}
+                price={course.price}
+                currency={course.currency}
+                duration={course.duration}
+                image={course.image}
+                topicCount={course._count.weeklyTopics}
+                pricingType={course.pricingType}
+                trialDays={course.trialDays}
+                action={
+                  <div className="border-t border-[var(--border)] pt-3 text-right">
+                    <a
+                      href={`/student/courses/${course.id}`}
+                      className="inline-flex items-center gap-1 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-600 transition-colors"
+                    >
+                      Register for 1 Month Free →
+                    </a>
+                  </div>
+                }
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

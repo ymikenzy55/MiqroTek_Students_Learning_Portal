@@ -34,5 +34,13 @@ export default async function StudentCourseDetailPage({ params }: { params: Prom
       })
     : null;
 
-  return <CourseDetailClient course={course} enrollment={enrollment} />;
+  // Serialize dates for the client component
+  const serializedEnrollment = enrollment
+    ? {
+        ...enrollment,
+        trialEndsAt: enrollment.trialEndsAt?.toISOString() || null,
+      }
+    : null;
+
+  return <CourseDetailClient course={course} enrollment={serializedEnrollment} />;
 }

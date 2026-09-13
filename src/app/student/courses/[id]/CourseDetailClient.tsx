@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CircularProgress } from "@/components/ui/CircularProgress";
-import { PaymentModal } from "@/components/payments/PaymentModal";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 
 interface CourseDetailClientProps {
   course: {
@@ -27,6 +28,8 @@ interface CourseDetailClientProps {
   enrollment: {
     id: string;
     status: string;
+    isTrial: boolean;
+    trialEndsAt: string | null;
     payment: {
       id: string;
       status: string;
@@ -37,20 +40,45 @@ interface CourseDetailClientProps {
 }
 
 export function CourseDetailClient({ course, enrollment }: CourseDetailClientProps) {
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [registering, setRegistering] = useState(false);
 
-  const isPaid = enrollment?.payment?.status === "PAID" || course.price === 0;
   const isEnrolled = !!enrollment;
+  const isTrialActive = enrollment?.isTrial && enrollment?.trialEndsAt
+    ? new Date(enrollment.trialEndsAt) > new Date()
+    : false;
 
   const totalTopics = course.weeklyTopics.length;
-  // Instructor-driven progress: count topics the instructor has marked covered.
   const coveredTopics = course.weeklyTopics.filter((t) => t.covered).length;
   const progressPercent =
-    isPaid && totalTopics > 0
+    isEnrolled && totalTopics > 0
       ? Math.min(100, Math.round((coveredTopics / totalTopics) * 100))
       : 0;
 
   const defaultImg = "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80";
+
+  async function handleRegister() {
+    setRegistering(true);
+    try {
+      const res = await fetch("/api/student/enroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseId: course.id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast("Successfully registered! Your 1-month free trial has started.", "success");
+        router.refresh();
+      } else {
+        showToast(data.error || "Failed to register", "error");
+      }
+    } catch {
+      showToast("Failed to register. Please try again.", "error");
+    } finally {
+      setRegistering(false);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -80,48 +108,68 @@ export function CourseDetailClient({ course, enrollment }: CourseDetailClientPro
 
         <div className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-[var(--border)]">
           <div>
-            <p className="text-xs text-[var(--muted)]">Course Price</p>
-            <p className="text-2xl font-extrabold text-[var(--accent)]">
-              {course.price > 0 ? `${course.currency} ${course.price.toFixed(2)}` : "FREE"}
-            </p>
+            <p className="text-xs text-[var(--muted)]">Enrollment</p>
+            {isEnrolled ? (
+              isTrialActive ? (
+                <p className="text-2xl font-extrabold text-emerald-600">
+                  Free Trial Active
+                </p>
+              ) : (
+                <p className="text-2xl font-extrabold text-[var(--accent)]">
+                  Enrolled
+                </p>
+              )
+            ) : (
+              <p className="text-2xl font-extrabold text-emerald-600">
+                Free for 1 Month
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
-            {isPaid ? (
-              <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                <span>✅ Paid & Active Enrollment</span>
+            {isEnrolled ? (
+              <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-600 border border-emerald-500/20">
+                {isTrialActive ? (
+                  <span>✅ Free Trial Active — {enrollment?.trialEndsAt ? new Date(enrollment.trialEndsAt).toLocaleDateString() : ""}</span>
+                ) : (
+                  <span>✅ Enrolled</span>
+                )}
               </div>
             ) : (
-              <Button onClick={() => setIsPaymentOpen(true)} className="px-6 py-3 text-base">
-                💳 Pay & Enroll Now ({course.currency} {course.price.toFixed(2)})
+              <Button
+                onClick={handleRegister}
+                disabled={registering}
+                className="px-6 py-3 text-base bg-emerald-500 hover:bg-emerald-600"
+              >
+                {registering ? "Registering..." : "Register for 1 Month Free"}
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Overview Grid: Circular Progress + Payment Details */}
+      {/* Overview Grid: Circular Progress + Course Details */}
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Clean Circular Progress Show */}
+        {/* Circular Progress */}
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--white)] p-6 shadow-xs flex flex-col items-center justify-center text-center">
           <h3 className="text-base font-semibold text-[var(--foreground)] mb-4">Course Learning Progress</h3>
           <CircularProgress
             percentage={progressPercent}
             size={150}
             strokeWidth={12}
-            label={isPaid ? (progressPercent === 100 ? "Complete" : "In Progress") : "Not Started"}
-            sublabel={`${isPaid ? coveredTopics : 0} of ${totalTopics} Topics`}
+            label={isEnrolled ? (progressPercent === 100 ? "Complete" : "In Progress") : "Not Started"}
+            sublabel={`${isEnrolled ? coveredTopics : 0} of ${totalTopics} Topics`}
           />
           <p className="mt-4 text-xs text-[var(--muted)]">
-            {isPaid
+            {isEnrolled
               ? "Progress is updated by your instructor as topics are covered in class."
-              : "Pay to unlock full weekly topics and assignments."}
+              : "Register to unlock weekly topics and track your progress."}
           </p>
         </div>
 
-        {/* Duration & Payment Tab Info */}
+        {/* Course Details */}
         <div className="md:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--white)] p-6 shadow-xs space-y-4">
-          <h3 className="text-base font-semibold text-[var(--foreground)]">Course Details & Billing Tab</h3>
+          <h3 className="text-base font-semibold text-[var(--foreground)]">Course Details</h3>
           {course.description && (
             <div className="text-sm leading-relaxed text-[var(--muted)] whitespace-pre-line">
               {course.description}
@@ -134,26 +182,19 @@ export function CourseDetailClient({ course, enrollment }: CourseDetailClientPro
               <p className="text-lg font-bold text-[var(--foreground)] mt-0.5">{course.duration || "8 Weeks"}</p>
             </div>
             <div className="rounded-xl bg-[var(--surface)] p-3 border border-[var(--border)]">
-              <p className="text-xs text-[var(--muted)]">Payment Status</p>
-              <p className={`text-lg font-bold mt-0.5 ${isPaid ? "text-emerald-600" : "text-amber-600"}`}>
-                {isPaid ? "PAID" : "UNPAID"}
+              <p className="text-xs text-[var(--muted)]">Enrollment Status</p>
+              <p className={`text-lg font-bold mt-0.5 ${isEnrolled ? "text-emerald-600" : "text-[var(--muted)]"}`}>
+                {isEnrolled ? (isTrialActive ? "Free Trial" : "Active") : "Not Registered"}
               </p>
             </div>
           </div>
-
-          {enrollment?.payment && (
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-xs text-[var(--muted)] flex items-center justify-between">
-              <span>Receipt Ref: <strong className="text-[var(--foreground)]">{enrollment.payment.reference}</strong></span>
-              <span>Amount: <strong className="text-[var(--accent)]">{course.currency} {enrollment.payment.amount}</strong></span>
-            </div>
-          )}
         </div>
       </div>
 
       {/* What's included */}
       {course.highlights.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-xl font-bold text-[var(--foreground)]">What&apos;s Included</h2>
+          <h2 className="text-xl font-bold text-[var(--foreground)]">What's Included</h2>
           <div className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--white)] p-6 shadow-xs sm:grid-cols-2">
             {course.highlights.map((h, i) => (
               <div key={i} className="flex items-start gap-2.5">
@@ -172,7 +213,11 @@ export function CourseDetailClient({ course, enrollment }: CourseDetailClientPro
         <h2 className="text-xl font-bold text-[var(--foreground)]">Course Topics & Syllabus</h2>
         <div className="divide-y divide-[var(--border)] rounded-2xl border border-[var(--border)] bg-[var(--white)] overflow-hidden shadow-xs">
           {course.weeklyTopics.length === 0 ? (
-            <div className="p-8 text-center text-sm text-[var(--muted)]">No weekly topics set for this course yet.</div>
+            <div className="p-8 text-center text-sm text-[var(--muted)]">
+              {isEnrolled
+                ? "No weekly topics set for this course yet. Your instructor will add them soon."
+                : "No weekly topics set for this course yet. Register to get notified when topics are added."}
+            </div>
           ) : (
             course.weeklyTopics.map((topic) => (
               <div key={topic.id} className="p-5 flex items-start gap-4 hover:bg-[var(--surface)]/50 transition-colors">
@@ -187,7 +232,7 @@ export function CourseDetailClient({ course, enrollment }: CourseDetailClientPro
                 </div>
                 <div className="text-right">
                   {topic.covered ? (
-                    <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600">
                       ✓ Completed
                     </span>
                   ) : (
@@ -201,16 +246,6 @@ export function CourseDetailClient({ course, enrollment }: CourseDetailClientPro
           )}
         </div>
       </div>
-
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={isPaymentOpen}
-        onClose={() => setIsPaymentOpen(false)}
-        courseId={course.id}
-        courseTitle={course.title}
-        price={course.price}
-        currency={course.currency}
-      />
     </div>
   );
 }

@@ -124,7 +124,6 @@ function CourseListWithSearch({
           <div className="stagger grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {paginated.map((course) => {
               const enr = enrollmentMap.get(course.id);
-              const isPaid = enr?.payment?.status === "PAID" || course.price === 0;
 
               return (
                 <CourseCard
@@ -146,33 +145,23 @@ function CourseListWithSearch({
                   action={
                     enrolled ? (
                       <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
-                        <span
-                          className={`text-xs font-bold ${
-                            isPaid
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-amber-600"
-                          }`}
-                        >
-                          {isPaid ? "✅ Paid & Active" : "⚠️ Payment Pending"}
+                        <span className="text-xs font-bold text-emerald-600">
+                          ✅ Registered
                         </span>
                         <Link
                           href={`/student/courses/${course.id}`}
                           className="inline-flex items-center gap-1 rounded-xl bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[var(--accent-dark)] transition-colors"
                         >
-                          {isPaid ? "View Topics & Progress →" : "Pay & View Topics →"}
+                          View Topics & Progress →
                         </Link>
                       </div>
                     ) : (
                       <div className="border-t border-[var(--border)] pt-3 text-right">
                         <Link
                           href={`/student/courses/${course.id}`}
-                          className="inline-flex items-center gap-1 rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[var(--accent-dark)] transition-colors"
+                          className="inline-flex items-center gap-1 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-600 transition-colors"
                         >
-                          {course.pricingType === "FREE_TRIAL"
-                            ? `Start Free ${course.trialDays}-Day Trial →`
-                            : course.price === 0
-                              ? "Enroll for Free →"
-                              : "View Details & Enroll →"}
+                          Register for 1 Month Free →
                         </Link>
                       </div>
                     )

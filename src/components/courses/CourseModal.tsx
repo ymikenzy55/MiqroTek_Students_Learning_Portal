@@ -47,7 +47,7 @@ export function CourseModal({ isOpen, onClose }: CourseModalProps) {
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
 
   // Pricing model state
-  const [pricingType, setPricingType] = useState<"PAID" | "FREE_TRIAL">("PAID");
+  const [pricingType, setPricingType] = useState<"PAID" | "FREE_TRIAL">("FREE_TRIAL");
   const [trialDays, setTrialDays] = useState("30");
   const [registrationDeadline, setRegistrationDeadline] = useState("");
   const [allowPartialPayment, setAllowPartialPayment] = useState(false);
