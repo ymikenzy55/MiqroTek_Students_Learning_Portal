@@ -47,3 +47,7 @@ next-env.d.ts
 
 # prisma generated client
 src/generated/
+thesis_build/
+*.docx
+*.pdf
+~$*
