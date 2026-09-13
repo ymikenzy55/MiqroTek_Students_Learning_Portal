@@ -123,7 +123,9 @@ export function CourseDetailClient({ course, enrollment }: CourseDetailClientPro
         <div className="md:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--white)] p-6 shadow-xs space-y-4">
           <h3 className="text-base font-semibold text-[var(--foreground)]">Course Details & Billing Tab</h3>
           {course.description && (
-            <p className="text-sm leading-relaxed text-[var(--muted)]">{course.description}</p>
+            <div className="text-sm leading-relaxed text-[var(--muted)] whitespace-pre-line">
+              {course.description}
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-4 pt-2">

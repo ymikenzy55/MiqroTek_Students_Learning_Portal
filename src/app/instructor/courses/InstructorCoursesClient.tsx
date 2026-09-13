@@ -197,7 +197,7 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
                 </h3>
 
                 {course.description && (
-                  <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[var(--muted)]">
+                  <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-[var(--muted)] whitespace-pre-line">
                     {course.description}
                   </p>
                 )}

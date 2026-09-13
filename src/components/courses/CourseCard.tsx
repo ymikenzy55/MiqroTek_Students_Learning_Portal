@@ -73,7 +73,7 @@ export function CourseCard({
         </h3>
 
         {description && (
-          <p className="mt-2 mb-4 line-clamp-2 text-sm leading-relaxed text-[var(--muted)]">
+          <p className="mt-2 mb-4 line-clamp-2 text-sm leading-relaxed text-[var(--muted)] whitespace-pre-line">
             {description}
           </p>
         )}

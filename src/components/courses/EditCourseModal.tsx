@@ -106,6 +106,9 @@ export function EditCourseModal({ isOpen, onClose, course }: EditCourseModalProp
               placeholder="Detailed description..."
               className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-sm focus:border-[var(--accent)] focus:outline-none"
             />
+            <p className="text-xs text-[var(--muted)]">
+              Each line break will be preserved when shown to students — write one point per line for a structured layout.
+            </p>
           </div>
 
           <Input label="Duration" name="duration" defaultValue={course.duration || "8 Weeks"} required />
