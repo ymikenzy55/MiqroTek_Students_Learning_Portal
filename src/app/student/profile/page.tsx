@@ -16,7 +16,7 @@ export default async function StudentProfile() {
       image: true,
       role: true,
       notifyOnMessage: true,
-      studentProfile: { select: { bio: true, avatarUrl: true } },
+      studentProfile: { select: { bio: true, avatarUrl: true, cvUrl: true } },
     },
   });
 
@@ -39,6 +39,7 @@ export default async function StudentProfile() {
               bio: user.studentProfile.bio,
               avatarUrl: user.studentProfile.avatarUrl,
               title: null,
+              cvUrl: user.studentProfile.cvUrl,
             }
           : null
       }

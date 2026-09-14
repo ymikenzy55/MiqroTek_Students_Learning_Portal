@@ -45,7 +45,7 @@ export default async function StudentDetailPage({
       phone: true,
       image: true,
       createdAt: true,
-      studentProfile: { select: { bio: true, avatarUrl: true } },
+      studentProfile: { select: { bio: true, avatarUrl: true, cvUrl: true } },
       enrollments: {
         where: isSuperAdmin ? undefined : { course: { instructorId } },
         include: {
@@ -157,6 +157,19 @@ export default async function StudentDetailPage({
           <div className="mt-4 border-t border-[var(--border)] pt-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Bio</p>
             <p className="mt-1 text-sm text-[var(--foreground)]">{student.studentProfile.bio}</p>
+          </div>
+        )}
+        {student.studentProfile?.cvUrl && (
+          <div className="mt-4 border-t border-[var(--border)] pt-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">CV / Resume</p>
+            <a
+              href={student.studentProfile.cvUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-500/20"
+            >
+              📄 View / Download CV (PDF)
+            </a>
           </div>
         )}
       </Card>

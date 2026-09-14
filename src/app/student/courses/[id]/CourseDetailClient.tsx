@@ -24,6 +24,12 @@ interface CourseDetailClientProps {
       description: string | null;
       covered: boolean;
     }[];
+    resources: {
+      id: string;
+      title: string;
+      type: string;
+      url: string;
+    }[];
   };
   enrollment: {
     id: string;
@@ -246,6 +252,45 @@ export function CourseDetailClient({ course, enrollment }: CourseDetailClientPro
           )}
         </div>
       </div>
+
+      {/* Course Resources (PDFs & PPTs from instructor) */}
+      {isEnrolled && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-[var(--foreground)]">Course Materials</h2>
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--white)] p-6 shadow-xs">
+            {course.resources.length === 0 ? (
+              <p className="text-center text-sm text-[var(--muted)] py-4">
+                No materials uploaded yet. Your instructor will add PDFs and slides here.
+              </p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {course.resources.map((resource) => (
+                  <a
+                    key={resource.id}
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-all hover:border-[var(--accent)] hover:shadow-sm"
+                  >
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-2xl">
+                      {resource.type === "PDF" ? "📄" : "📊"}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[var(--foreground)] truncate">
+                        {resource.title}
+                      </p>
+                      <p className="text-xs text-[var(--muted)]">
+                        {resource.type} — Click to view/download
+                      </p>
+                    </div>
+                    <span className="text-[var(--accent)] text-lg">↗</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

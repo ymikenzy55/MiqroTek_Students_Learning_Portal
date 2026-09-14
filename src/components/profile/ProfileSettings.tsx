@@ -11,6 +11,7 @@ import {
   updateProfileAction,
   updateSettingsAction,
 } from "@/actions/profile-actions";
+import { updateCvAction } from "@/actions/resource-actions";
 
 interface ProfileSettingsProps {
   user: {
@@ -26,6 +27,7 @@ interface ProfileSettingsProps {
     bio: string | null;
     avatarUrl: string | null;
     title: string | null;
+    cvUrl: string | null;
   } | null;
   basePath: string;
 }
@@ -43,6 +45,10 @@ export function ProfileSettings({ user, profile, basePath }: ProfileSettingsProp
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(user.image || profile?.avatarUrl || "");
   const [newPassword, setNewPassword] = useState("");
+  const [cvUrl, setCvUrl] = useState(profile?.cvUrl || "");
+  const [cvUploading, setCvUploading] = useState(false);
+  const [cvSaving, startCvSave] = useTransition();
+  const cvInputRef = useRef<HTMLInputElement>(null);
 
   // Local state for settings toggle so it feels instant
   const [notifyOnMessage, setNotifyOnMessage] = useState(user.notifyOnMessage);
@@ -79,6 +85,56 @@ export function ProfileSettings({ user, profile, basePath }: ProfileSettingsProp
     } finally {
       setUploading(false);
     }
+  }
+
+  async function handleCvUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      showToast("Please upload a PDF file.", "error");
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      showToast("CV must be less than 20 MB.", "error");
+      return;
+    }
+
+    setCvUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", "cvs");
+      const res = await fetch("/api/upload/file", { method: "POST", body: fd });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast(data.error || "Upload failed.", "error");
+        return;
+      }
+      const data = await res.json();
+      setCvUrl(data.url);
+
+      // Save immediately
+      startCvSave(async () => {
+        const result = await updateCvAction(data.url);
+        if (result.success) showToast("CV uploaded and saved!", "success");
+        else showToast(result.error || "Failed to save CV.", "error");
+      });
+    } catch {
+      showToast("Failed to upload CV.", "error");
+    } finally {
+      setCvUploading(false);
+    }
+  }
+
+  async function handleRemoveCv() {
+    setCvUrl("");
+    startCvSave(async () => {
+      const result = await updateCvAction("");
+      if (result.success) showToast("CV removed.", "success");
+      else showToast(result.error || "Failed to remove CV.", "error");
+    });
   }
 
   async function handleProfileSave(e: React.FormEvent<HTMLFormElement>) {
@@ -224,6 +280,82 @@ export function ProfileSettings({ user, profile, basePath }: ProfileSettingsProp
             </Button>
           </div>
         </form>
+      )}
+
+      {/* CV Upload section (students only) */}
+      {isStudent && tab === "profile" && (
+        <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--white)] p-6">
+          <h3 className="text-base font-semibold text-[var(--foreground)]">CV / Resume</h3>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Upload your CV in PDF format (max 20 MB). Your instructors can view and download it.
+          </p>
+
+          <input
+            ref={cvInputRef}
+            type="file"
+            accept="application/pdf"
+            onChange={handleCvUpload}
+            className="hidden"
+          />
+
+          {cvUrl ? (
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/10 text-lg">
+                  📄
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-[var(--foreground)]">CV uploaded</p>
+                  <a
+                    href={cvUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[var(--accent)] hover:underline"
+                  >
+                    View CV →
+                  </a>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => cvInputRef.current?.click()}
+                  disabled={cvUploading || cvSaving}
+                  className="rounded-lg bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/20"
+                >
+                  Replace
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRemoveCv}
+                  disabled={cvUploading || cvSaving}
+                  className="rounded-lg bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-500/20"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => cvInputRef.current?.click()}
+              disabled={cvUploading}
+              className="mt-4 flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--border)] p-8 text-sm text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              {cvUploading ? (
+                <>
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <span className="text-2xl">📄</span>
+                  Click to upload your CV (PDF only — max 20 MB)
+                </>
+              )}
+            </button>
+          )}
+        </div>
       )}
 
       {/* Settings tab */}

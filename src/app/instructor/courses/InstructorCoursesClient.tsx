@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/States";
 import { CourseModal } from "@/components/courses/CourseModal";
 import { EditCourseModal } from "@/components/courses/EditCourseModal";
+import { ResourceModal } from "@/components/courses/ResourceModal";
 import {
   deleteCourseAction,
   toggleTopicCoveredAction,
@@ -41,6 +42,7 @@ interface CourseData {
   registrationDeadline: string | null;
   allowPartialPayment: boolean;
   minimumPayment: number | null;
+  resources: { id: string; title: string; type: string; url: string; createdAt: string }[];
 }
 
 export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) {
@@ -48,6 +50,7 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseData | null>(null);
   const [managingTopicsFor, setManagingTopicsFor] = useState<CourseData | null>(null);
+  const [managingResourcesFor, setManagingResourcesFor] = useState<CourseData | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [newTopicTitle, setNewTopicTitle] = useState("");
@@ -249,6 +252,12 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
                     Topics
                   </button>
                   <button
+                    onClick={() => setManagingResourcesFor(course)}
+                    className="flex-1 rounded-lg bg-indigo-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-500/20"
+                  >
+                    Resources ({course.resources?.length || 0})
+                  </button>
+                  <button
                     onClick={() => setEditingCourse(course)}
                     className="flex-1 rounded-lg bg-[var(--surface)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--border)]"
                   >
@@ -403,6 +412,20 @@ export function InstructorCoursesClient({ courses }: { courses: CourseData[] }) 
             </div>
           </div>
         </div>
+      )}
+
+      {/* Resource management modal */}
+      {managingResourcesFor && (
+        <ResourceModal
+          courseId={managingResourcesFor.id}
+          courseTitle={managingResourcesFor.title}
+          resources={managingResourcesFor.resources || []}
+          weeklyTopics={managingResourcesFor.weeklyTopics}
+          onClose={() => {
+            setManagingResourcesFor(null);
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );

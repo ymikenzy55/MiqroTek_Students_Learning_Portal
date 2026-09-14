@@ -39,6 +39,7 @@ export default async function InstructorProfile() {
               bio: user.instructorProfile.bio,
               avatarUrl: user.instructorProfile.avatarUrl,
               title: user.instructorProfile.title,
+              cvUrl: null,
             }
           : null
       }

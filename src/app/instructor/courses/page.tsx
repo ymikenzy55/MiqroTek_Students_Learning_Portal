@@ -15,6 +15,10 @@ export default async function InstructorCoursesPage() {
             select: { id: true, weekNumber: true, title: true, covered: true },
             orderBy: { weekNumber: "asc" },
           },
+          resources: {
+            select: { id: true, title: true, type: true, url: true, createdAt: true },
+            orderBy: { createdAt: "desc" },
+          },
           _count: { select: { weeklyTopics: true, enrollments: true } },
         },
         orderBy: { createdAt: "desc" },
@@ -25,6 +29,10 @@ export default async function InstructorCoursesPage() {
   const serializedCourses = courses.map((c) => ({
     ...c,
     registrationDeadline: c.registrationDeadline?.toISOString() || null,
+    resources: c.resources.map((r) => ({
+      ...r,
+      createdAt: r.createdAt.toISOString(),
+    })),
   }));
 
   return <InstructorCoursesClient courses={serializedCourses} />;

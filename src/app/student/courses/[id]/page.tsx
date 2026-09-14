@@ -13,6 +13,7 @@ export default async function StudentCourseDetailPage({ params }: { params: Prom
     include: {
       instructor: { select: { name: true } },
       weeklyTopics: { orderBy: { weekNumber: "asc" } },
+      resources: { orderBy: { createdAt: "desc" } },
     },
   });
 
